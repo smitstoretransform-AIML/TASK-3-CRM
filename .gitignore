@@ -1,0 +1,15 @@
+#Virtual Environment
+SMS_venv/
+
+#Enironment Variables
+.env
+
+#Python Cache
+__pycache__/
+*.pyc
+
+#IDE
+.vscode/
+
+#Test cache
+.pytest_cache/
