@@ -6,8 +6,10 @@ from app.models import (
     Permission,
     RolePermission,
     User,
+    Customer,
 )
 from app.routers.auth import router as auth_router
+from app.routers.customers import router as customer_router
 
 
 Base.metadata.create_all(bind=engine)
@@ -21,6 +23,7 @@ app = FastAPI(
 
 
 app.include_router(auth_router)
+app.include_router(customer_router)
 
 
 @app.get("/")
