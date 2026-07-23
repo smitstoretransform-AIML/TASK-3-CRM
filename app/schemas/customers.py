@@ -1,21 +1,43 @@
 from datetime import datetime
+import re
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    field_validator,
+)
 
 
 class CustomerCreate(BaseModel):
-    name: str = Field(..., min_length=1)
+    name: str = Field(...)
     email: EmailStr
-    phone: str = Field(..., min_length=1)
+    phone: str = Field(...)
     company: str | None = None
 
-    @field_validator("name", "phone")
+    @field_validator("name")
     @classmethod
-    def validate_required_fields(cls, value: str) -> str:
+    def validate_name(cls, value: str) -> str:
         value = value.strip()
 
         if not value:
-            raise ValueError("This field cannot be empty")
+            raise ValueError("Name cannot be empty")
+
+        return value
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, value: str) -> str:
+        value = value.strip()
+
+        if not value:
+            raise ValueError("Phone number cannot be empty")
+
+        if not re.fullmatch(r"\d{10}", value):
+            raise ValueError(
+                "Phone number must contain exactly 10 digits"
+            )
 
         return value
 
@@ -27,25 +49,48 @@ class CustomerCreate(BaseModel):
 
         value = value.strip()
 
-        return value if value else None
+        if not value:
+            raise ValueError(
+                "Company cannot be empty if provided"
+            )
+
+        return value
 
 
 class CustomerUpdate(BaseModel):
-    name: str | None = Field(default=None, min_length=1)
+    name: str | None = None
     email: EmailStr | None = None
-    phone: str | None = Field(default=None, min_length=1)
+    phone: str | None = None
     company: str | None = None
 
-    @field_validator("name", "phone")
+    @field_validator("name")
     @classmethod
-    def validate_optional_fields(cls, value: str | None) -> str | None:
+    def validate_name(cls, value: str | None) -> str | None:
         if value is None:
             return None
 
         value = value.strip()
 
         if not value:
-            raise ValueError("This field cannot be empty")
+            raise ValueError("Name cannot be empty")
+
+        return value
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+
+        value = value.strip()
+
+        if not value:
+            raise ValueError("Phone number cannot be empty")
+
+        if not re.fullmatch(r"\d{10}", value):
+            raise ValueError(
+                "Phone number must contain exactly 10 digits"
+            )
 
         return value
 
@@ -57,7 +102,12 @@ class CustomerUpdate(BaseModel):
 
         value = value.strip()
 
-        return value if value else None
+        if not value:
+            raise ValueError(
+                "Company cannot be empty if provided"
+            )
+
+        return value
 
 
 class CustomerResponse(BaseModel):
