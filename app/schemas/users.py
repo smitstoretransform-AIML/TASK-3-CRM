@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 
 class UserCreate(BaseModel):
@@ -10,6 +10,11 @@ class UserCreate(BaseModel):
     role_id: int
 
 
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+
 class UserResponse(BaseModel):
     id: int
     name: str
@@ -17,4 +22,11 @@ class UserResponse(BaseModel):
     role_id: int
     created_at: datetime
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True
+    )
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str

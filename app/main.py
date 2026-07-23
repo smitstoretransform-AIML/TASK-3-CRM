@@ -7,6 +7,7 @@ from app.models import (
     RolePermission,
     User,
 )
+from app.routers.auth import router as auth_router
 
 
 Base.metadata.create_all(bind=engine)
@@ -17,6 +18,9 @@ app = FastAPI(
     description="CRM System Enhancement - Lead Management Module",
     version="1.0.0",
 )
+
+
+app.include_router(auth_router)
 
 
 @app.get("/")
