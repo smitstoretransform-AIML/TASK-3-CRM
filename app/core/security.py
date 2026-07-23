@@ -5,12 +5,10 @@ from passlib.context import CryptContext
 
 from app.core.config import settings
 
-
 pwd_context = CryptContext(
-    schemes=["bcrypt_sha256"],
-    deprecated="auto"
+    schemes=["bcrypt_sha256", "bcrypt"],
+    deprecated=["bcrypt"],  # marks old scheme as deprecated
 )
-
 
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
