@@ -5,7 +5,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, require_permission
 from app.models.customers import Customer
 from app.models.users import User
 from app.schemas.customers import (
@@ -93,14 +93,19 @@ def list_customers(
     ),
     sort_by: str = Query(
         default="created_at",
-        description="Sort field: id, name, email, company, created_at, updated_at"
+        description=(
+            "Sort field: id, name, email, company, "
+            "created_at, updated_at"
+        )
     ),
     sort_order: str = Query(
         default="desc",
         description="Sort order: asc or desc"
     ),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(
+        require_permission("view_customers")
+    )
 ):
     allowed_sort_fields = {
         "id": Customer.id,
@@ -210,7 +215,9 @@ def list_customers(
 def get_customer(
     customer_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(
+        require_permission("view_customers")
+    )
 ):
     customer = (
         db.query(Customer)
