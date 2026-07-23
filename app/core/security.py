@@ -7,7 +7,7 @@ from app.core.config import settings
 
 
 pwd_context = CryptContext(
-    schemes=["bcrypt"],
+    schemes=["bcrypt_sha256"],
     deprecated="auto"
 )
 
