@@ -124,3 +124,11 @@ class CustomerResponse(BaseModel):
     model_config = ConfigDict(
         from_attributes=True
     )
+
+
+class CustomerListResponse(BaseModel):
+    items: list[CustomerResponse]
+    page: int
+    limit: int
+    total: int
+    total_pages: int
