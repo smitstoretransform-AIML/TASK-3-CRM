@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 from app.core.security import (
     create_access_token,
     hash_password,
@@ -34,7 +35,6 @@ def register_user(
     user_data: UserCreate,
     db: Session = Depends(get_db)
 ):
-    # Check whether email already exists
     existing_user = (
         db.query(User)
         .filter(User.email == user_data.email)
@@ -47,7 +47,6 @@ def register_user(
             detail="Email is already registered"
         )
 
-    # Check whether the requested role exists
     role = (
         db.query(Role)
         .filter(Role.id == user_data.role_id)
@@ -60,12 +59,10 @@ def register_user(
             detail="Role not found"
         )
 
-    # Hash the user's password
     hashed_password = hash_password(
         user_data.password
     )
 
-    # Create new user
     new_user = User(
         name=user_data.name,
         email=user_data.email,
@@ -88,21 +85,18 @@ def login_user(
     user_data: UserLogin,
     db: Session = Depends(get_db)
 ):
-    # Find user by email
     user = (
         db.query(User)
         .filter(User.email == user_data.email)
         .first()
     )
 
-    # Do not reveal whether the email exists
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"
         )
 
-    # Verify password
     password_valid = verify_password(
         user_data.password,
         user.password
@@ -114,7 +108,6 @@ def login_user(
             detail="Invalid email or password"
         )
 
-    # Create JWT token
     access_token = create_access_token(
         data={
             "sub": str(user.id),
@@ -129,3 +122,13 @@ def login_user(
         "access_token": access_token,
         "token_type": "bearer"
     }
+
+
+@router.get(
+    "/me",
+    response_model=UserResponse
+)
+def get_my_profile(
+    current_user: User = Depends(get_current_user)
+):
+    return current_user
