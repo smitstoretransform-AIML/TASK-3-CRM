@@ -321,3 +321,7 @@ def delete_customer(
     db.commit()
 
     return None
+
+
+
+           
