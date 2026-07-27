@@ -12,6 +12,7 @@ from app.core.dependencies import (
     require_permission,
 )
 from app.models.leads import Lead
+from app.models.notifications import Notification
 from app.models.users import User
 from app.schemas.leads import (
     LeadCreate,
@@ -59,8 +60,10 @@ def create_lead(
             detail="Lead with this email already exists"
         )
 
-    if lead_data.assigned_to is not None:
+    # Validate assigned user
+    assigned_user = None
 
+    if lead_data.assigned_to is not None:
         assigned_user = (
             db.query(User)
             .filter(
@@ -87,6 +90,24 @@ def create_lead(
     )
 
     db.add(new_lead)
+
+    # Create notification if lead is assigned during creation
+    if (
+        lead_data.assigned_to is not None
+        and assigned_user is not None
+    ):
+        notification = Notification(
+            user_id=assigned_user.id,
+            title="New Lead Assigned",
+            message=(
+                f"{new_lead.name} assigned to "
+                f"{assigned_user.name}"
+            ),
+            is_read=False,
+            created_at=datetime.utcnow()
+        )
+
+        db.add(notification)
 
     # Create audit log
     create_audit_log(
@@ -291,10 +312,12 @@ def list_leads(
             Lead.created_at <= to_date
         )
 
+    # Count total records
     total = query.with_entities(
         func.count(Lead.id)
     ).scalar()
 
+    # Sorting
     sort_column = (
         allowed_sort_fields[sort_by]
     )
@@ -308,6 +331,7 @@ def list_leads(
             sort_column.desc()
         )
 
+    # Pagination
     offset = (
         page - 1
     ) * limit
@@ -400,7 +424,6 @@ def update_lead(
 
     # Check duplicate email
     if "email" in update_data:
-
         existing_lead = (
             db.query(Lead)
             .filter(
@@ -425,7 +448,6 @@ def update_lead(
         "assigned_to" in update_data
         and update_data["assigned_to"] is not None
     ):
-
         assigned_user = (
             db.query(User)
             .filter(
@@ -450,6 +472,18 @@ def update_lead(
             field
         )
 
+    # Check whether assignment changed
+    old_assigned_to = lead.assigned_to
+    new_assigned_to = update_data.get(
+        "assigned_to"
+    )
+
+    assignment_changed = (
+        "assigned_to" in update_data
+        and old_assigned_to != new_assigned_to
+        and new_assigned_to is not None
+    )
+
     # Update Lead
     for field, value in update_data.items():
         setattr(
@@ -466,6 +500,30 @@ def update_lead(
             lead,
             field
         )
+
+    # Create notification if assignment changed
+    if assignment_changed:
+        assigned_user = (
+            db.query(User)
+            .filter(
+                User.id == new_assigned_to
+            )
+            .first()
+        )
+
+        if assigned_user:
+            notification = Notification(
+                user_id=assigned_user.id,
+                title="New Lead Assigned",
+                message=(
+                    f"{lead.name} assigned to "
+                    f"{assigned_user.name}"
+                ),
+                is_read=False,
+                created_at=datetime.utcnow()
+            )
+
+            db.add(notification)
 
     # Create audit log
     create_audit_log(
@@ -536,8 +594,28 @@ def assign_lead(
     # Capture previous assignment
     old_assigned_to = lead.assigned_to
 
+    # Check whether assignment actually changed
+    assignment_changed = (
+        old_assigned_to != assigned_to
+    )
+
     # Update assignment
     lead.assigned_to = assigned_to
+
+    # Create notification only for a new assignment
+    if assignment_changed:
+        notification = Notification(
+            user_id=assigned_user.id,
+            title="New Lead Assigned",
+            message=(
+                f"{lead.name} assigned to "
+                f"{assigned_user.name}"
+            ),
+            is_read=False,
+            created_at=datetime.utcnow()
+        )
+
+        db.add(notification)
 
     # Create assignment audit log
     create_audit_log(
