@@ -7,3 +7,4 @@ from app.models.leads import Lead
 from app.models.audit_logs import AuditLog
 from app.models.customer_activities import CustomerActivity
 from app.models.follow_ups import FollowUp
+from app.models.notifications import Notification
