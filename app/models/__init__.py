@@ -5,3 +5,4 @@ from app.models.users import User
 from app.models.customers import Customer
 from app.models.leads import Lead
 from app.models.audit_logs import AuditLog
+from app.models.customer_activities import CustomerActivity
