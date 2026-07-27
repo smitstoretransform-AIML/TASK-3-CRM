@@ -1,10 +1,11 @@
-from datetime import datetime, time
+from datetime import datetime
 from math import ceil
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
+from app.core.audit import create_audit_log
 from app.core.database import get_db
 from app.core.dependencies import (
     get_current_user,
@@ -86,6 +87,25 @@ def create_lead(
     )
 
     db.add(new_lead)
+
+    # Create audit log
+    create_audit_log(
+        db=db,
+        user_id=current_user.id,
+        action="CREATE",
+        module="leads",
+        old_data=None,
+        new_data={
+            "name": new_lead.name,
+            "email": new_lead.email,
+            "phone": new_lead.phone,
+            "company": new_lead.company,
+            "source": new_lead.source,
+            "status": new_lead.status,
+            "assigned_to": new_lead.assigned_to,
+        }
+    )
+
     db.commit()
     db.refresh(new_lead)
 
@@ -421,12 +441,41 @@ def update_lead(
                 detail="Assigned user not found"
             )
 
+    # Capture OLD values
+    old_data = {}
+
+    for field in update_data:
+        old_data[field] = getattr(
+            lead,
+            field
+        )
+
+    # Update Lead
     for field, value in update_data.items():
         setattr(
             lead,
             field,
             value
         )
+
+    # Capture NEW values
+    new_data = {}
+
+    for field in update_data:
+        new_data[field] = getattr(
+            lead,
+            field
+        )
+
+    # Create audit log
+    create_audit_log(
+        db=db,
+        user_id=current_user.id,
+        action="UPDATE",
+        module="leads",
+        old_data=old_data,
+        new_data=new_data
+    )
 
     db.commit()
     db.refresh(lead)
@@ -484,7 +533,25 @@ def assign_lead(
             detail="Assigned user not found"
         )
 
+    # Capture previous assignment
+    old_assigned_to = lead.assigned_to
+
+    # Update assignment
     lead.assigned_to = assigned_to
+
+    # Create assignment audit log
+    create_audit_log(
+        db=db,
+        user_id=current_user.id,
+        action="ASSIGN",
+        module="leads",
+        old_data={
+            "assigned_to": old_assigned_to
+        },
+        new_data={
+            "assigned_to": assigned_to
+        }
+    )
 
     db.commit()
     db.refresh(lead)
@@ -523,7 +590,30 @@ def delete_lead(
             detail="Lead not found"
         )
 
+    # Capture Lead data before soft delete
+    old_data = {
+        "name": lead.name,
+        "email": lead.email,
+        "phone": lead.phone,
+        "company": lead.company,
+        "source": lead.source,
+        "status": lead.status,
+        "assigned_to": lead.assigned_to,
+        "created_by": lead.created_by,
+    }
+
+    # Soft delete
     lead.deleted_at = func.now()
+
+    # Create audit log
+    create_audit_log(
+        db=db,
+        user_id=current_user.id,
+        action="DELETE",
+        module="leads",
+        old_data=old_data,
+        new_data=None
+    )
 
     db.commit()
 

@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
+from app.core.audit import create_audit_log
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_permission
 from app.models.customers import Customer
@@ -56,6 +57,21 @@ def create_customer(
     )
 
     db.add(new_customer)
+
+    create_audit_log(
+        db=db,
+        user_id=current_user.id,
+        action="CREATE",
+        module="customers",
+        old_data=None,
+        new_data={
+            "name": new_customer.name,
+            "email": new_customer.email,
+            "phone": new_customer.phone,
+            "company": new_customer.company,
+        }
+    )
+
     db.commit()
     db.refresh(new_customer)
 
@@ -283,8 +299,41 @@ def update_customer(
                 detail="Customer with this email already exists"
             )
 
+    # Capture only the fields that are actually being updated
+    old_data = {}
+
+    for field in update_data:
+        old_data[field] = getattr(
+            customer,
+            field
+        )
+
+    # Update customer
     for field, value in update_data.items():
-        setattr(customer, field, value)
+        setattr(
+            customer,
+            field,
+            value
+        )
+
+    # Capture new values after update
+    new_data = {}
+
+    for field in update_data:
+        new_data[field] = getattr(
+            customer,
+            field
+        )
+
+    # Create audit log
+    create_audit_log(
+        db=db,
+        user_id=current_user.id,
+        action="UPDATE",
+        module="customers",
+        old_data=old_data,
+        new_data=new_data
+    )
 
     db.commit()
     db.refresh(customer)
@@ -316,12 +365,27 @@ def delete_customer(
             detail="Customer not found"
         )
 
+    # Capture customer data before soft delete
+    old_data = {
+        "name": customer.name,
+        "email": customer.email,
+        "phone": customer.phone,
+        "company": customer.company,
+    }
+
+    # Soft delete customer
     customer.deleted_at = func.now()
+
+    # Create audit log
+    create_audit_log(
+        db=db,
+        user_id=current_user.id,
+        action="DELETE",
+        module="customers",
+        old_data=old_data,
+        new_data=None
+    )
 
     db.commit()
 
     return None
-
-
-
-           
