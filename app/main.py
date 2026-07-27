@@ -14,6 +14,7 @@ from app.routers import permissions
 from app.routers.leads import router as leads_router
 from app.routers.audit_logs import router as audit_logs_router
 from app.routers import customer_activities
+from app.routers.follow_ups import router as follow_ups_router
 
 
 
@@ -33,6 +34,7 @@ app.include_router(permissions.router)
 app.include_router(leads_router)
 app.include_router(audit_logs_router)
 app.include_router(customer_activities.router)
+app.include_router(follow_ups_router)
 
 
 
