@@ -1,4 +1,6 @@
+import json
 from datetime import date, datetime, time, timezone
+from pathlib import Path
 
 from sqlalchemy import func
 
@@ -9,15 +11,26 @@ from app.models.leads import Lead
 from app.models.notifications import Notification
 
 
+# ---------------------------------------------------------
+# Report Storage Directory
+# ---------------------------------------------------------
+
+REPORTS_DIR = Path("reports")
+
+REPORTS_DIR.mkdir(
+    exist_ok=True
+)
+
+
 def generate_daily_crm_report():
     db = SessionLocal()
 
     try:
         today = date.today()
 
-        # ---------------------------------------------
-        # Today's date range
-        # ---------------------------------------------
+        # -------------------------------------------------
+        # Today's Date Range
+        # -------------------------------------------------
 
         start_of_day = datetime.combine(
             today,
@@ -33,9 +46,9 @@ def generate_daily_crm_report():
             tzinfo=timezone.utc
         )
 
-        # ---------------------------------------------
+        # -------------------------------------------------
         # Customer Statistics
-        # ---------------------------------------------
+        # -------------------------------------------------
 
         total_customers = (
             db.query(
@@ -59,9 +72,9 @@ def generate_daily_crm_report():
             .scalar()
         )
 
-        # ---------------------------------------------
+        # -------------------------------------------------
         # Lead Statistics
-        # ---------------------------------------------
+        # -------------------------------------------------
 
         total_leads = (
             db.query(
@@ -85,9 +98,9 @@ def generate_daily_crm_report():
             .scalar()
         )
 
-        # ---------------------------------------------
+        # -------------------------------------------------
         # Follow-up Statistics
-        # ---------------------------------------------
+        # -------------------------------------------------
 
         total_followups = (
             db.query(
@@ -127,9 +140,9 @@ def generate_daily_crm_report():
             .scalar()
         )
 
-        # ---------------------------------------------
+        # -------------------------------------------------
         # Notification Statistics
-        # ---------------------------------------------
+        # -------------------------------------------------
 
         notifications_today = (
             db.query(
@@ -142,12 +155,16 @@ def generate_daily_crm_report():
             .scalar()
         )
 
-        # ---------------------------------------------
+        # -------------------------------------------------
         # Build Report
-        # ---------------------------------------------
+        # -------------------------------------------------
 
         report = {
             "report_date": today.isoformat(),
+
+            "generated_at": datetime.now(
+                timezone.utc
+            ).isoformat(),
 
             "customers": {
                 "total": total_customers or 0,
@@ -171,6 +188,36 @@ def generate_daily_crm_report():
             },
         }
 
+        # -------------------------------------------------
+        # Save Report as JSON
+        # -------------------------------------------------
+
+        report_filename = (
+            f"daily_crm_report_"
+            f"{today.isoformat()}.json"
+        )
+
+        report_path = (
+            REPORTS_DIR /
+            report_filename
+        )
+
+        with open(
+            report_path,
+            "w",
+            encoding="utf-8"
+        ) as report_file:
+
+            json.dump(
+                report,
+                report_file,
+                indent=4
+            )
+
+        # -------------------------------------------------
+        # Print Report
+        # -------------------------------------------------
+
         print(
             "\n========== DAILY CRM REPORT =========="
         )
@@ -178,6 +225,11 @@ def generate_daily_crm_report():
         print(
             f"Report Date: "
             f"{report['report_date']}"
+        )
+
+        print(
+            f"Generated At: "
+            f"{report['generated_at']}"
         )
 
         print(
@@ -239,6 +291,14 @@ def generate_daily_crm_report():
         print(
             f"  Created Today: "
             f"{report['notifications']['created_today']}"
+        )
+
+        print(
+            "\nReport saved successfully:"
+        )
+
+        print(
+            f"  {report_path.resolve()}"
         )
 
         print(
