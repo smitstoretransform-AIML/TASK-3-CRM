@@ -1,7 +1,13 @@
 from datetime import datetime
 from math import ceil
 
-from fastapi import APIRouter, Depends, Query, status, HTTPException
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    status,
+)
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -10,69 +16,82 @@ from app.core.dependencies import (
     get_current_user,
     require_permission,
 )
+from app.core.responses import success_response
 from app.models.audit_logs import AuditLog
 from app.models.users import User
-from app.schemas.audit_logs import AuditLogListResponse
+from app.schemas.audit_logs import (
+    AuditLogListResponse,
+)
 
 
 router = APIRouter(
     prefix="/api/v1/audit-logs",
-    tags=["Audit Logs"]
+    tags=["Audit Logs"],
 )
+
+
+# ============================================================
+# LIST AUDIT LOGS
+# ============================================================
 
 @router.get(
     "/",
-    response_model=AuditLogListResponse,
+    response_model=dict,
+    status_code=status.HTTP_200_OK,
     dependencies=[
-        Depends(require_permission("view_audit_logs"))
-    ]
+        Depends(
+            require_permission("view_audit_logs")
+        )
+    ],
 )
 def list_audit_logs(
     user_id: int | None = Query(
         default=None,
         gt=0,
-        description="Filter audit logs by user ID"
+        description="Filter audit logs by user ID",
     ),
     action: str | None = Query(
         default=None,
-        description="Filter by action"
+        description="Filter by action",
     ),
     module: str | None = Query(
         default=None,
-        description="Filter by module"
+        description="Filter by module",
     ),
     from_date: datetime | None = Query(
         default=None,
-        description="Filter logs from this date"
+        description="Filter logs from this date",
     ),
     to_date: datetime | None = Query(
         default=None,
-        description="Filter logs until this date"
+        description="Filter logs until this date",
     ),
     page: int = Query(
         default=1,
         ge=1,
-        description="Page number"
+        description="Page number",
     ),
     limit: int = Query(
         default=20,
         ge=1,
         le=100,
-        description="Number of logs per page"
+        description="Number of logs per page",
     ),
     sort_by: str = Query(
         default="created_at",
         description=(
             "Sort field: id, user_id, action, "
             "module, created_at"
-        )
+        ),
     ),
     sort_order: str = Query(
         default="desc",
-        description="Sort order: asc or desc"
+        description="Sort order: asc or desc",
     ),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(
+        get_current_user
+    ),
 ):
     # ========================================================
     # DATE VALIDATION
@@ -88,7 +107,7 @@ def list_audit_logs(
             detail=(
                 "from_date cannot be greater "
                 "than to_date"
-            )
+            ),
         )
 
     # ========================================================
@@ -110,18 +129,21 @@ def list_audit_logs(
                 "Invalid sort_by value. "
                 "Allowed values: id, user_id, action, "
                 "module, created_at"
-            )
+            ),
         )
 
-    sort_order = sort_order.lower()
+    sort_order = sort_order.strip().lower()
 
-    if sort_order not in {"asc", "desc"}:
+    if sort_order not in {
+        "asc",
+        "desc",
+    }:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
                 "sort_order must be either "
                 "'asc' or 'desc'"
-            )
+            ),
         )
 
     # ========================================================
@@ -197,7 +219,9 @@ def list_audit_logs(
     # APPLY SORTING
     # ========================================================
 
-    sort_column = allowed_sort_fields[sort_by]
+    sort_column = (
+        allowed_sort_fields[sort_by]
+    )
 
     if sort_order == "asc":
         query = query.order_by(
@@ -229,10 +253,24 @@ def list_audit_logs(
         else 0
     )
 
-    return {
-        "items": audit_logs,
-        "page": page,
-        "limit": limit,
-        "total": total,
-        "total_pages": total_pages,
-    }
+    # ========================================================
+    # BUILD PAGINATED DATA
+    # ========================================================
+
+    audit_log_list = AuditLogListResponse(
+        items=audit_logs,
+        page=page,
+        limit=limit,
+        total=total,
+        total_pages=total_pages,
+    )
+
+    # ========================================================
+    # STANDARD SUCCESS RESPONSE
+    # ========================================================
+
+    return success_response(
+        data=audit_log_list,
+        message="Audit logs fetched successfully",
+        code=200,
+    )

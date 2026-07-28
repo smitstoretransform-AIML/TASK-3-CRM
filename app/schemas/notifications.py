@@ -24,5 +24,21 @@ class NotificationListResponse(BaseModel):
     total_pages: int
 
 
+
 class NotificationReadUpdate(BaseModel):
     is_read: bool
+
+
+
+class NotificationListApiResponse(BaseModel):
+    code: int
+    status: str
+    message: str
+    data: NotificationListResponse
+
+
+class NotificationApiResponse(BaseModel):
+    code: int
+    status: str
+    message: str
+    data: NotificationResponse

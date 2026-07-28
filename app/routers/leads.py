@@ -11,6 +11,10 @@ from app.core.dependencies import (
     get_current_user,
     require_permission,
 )
+from app.core.responses import (
+    APIResponse,
+    success_response,
+)
 from app.models.leads import Lead
 from app.models.notifications import Notification
 from app.models.users import User
@@ -34,7 +38,7 @@ router = APIRouter(
 
 @router.post(
     "/",
-    response_model=LeadResponse,
+    response_model=APIResponse,
     status_code=status.HTTP_201_CREATED,
     dependencies=[
         Depends(require_permission("create_lead"))
@@ -60,10 +64,14 @@ def create_lead(
             detail="Lead with this email already exists"
         )
 
-    # Validate assigned user
+    # ========================================================
+    # VALIDATE ASSIGNED USER
+    # ========================================================
+
     assigned_user = None
 
     if lead_data.assigned_to is not None:
+
         assigned_user = (
             db.query(User)
             .filter(
@@ -78,6 +86,10 @@ def create_lead(
                 detail="Assigned user not found"
             )
 
+    # ========================================================
+    # CREATE LEAD
+    # ========================================================
+
     new_lead = Lead(
         name=lead_data.name,
         email=lead_data.email,
@@ -91,7 +103,10 @@ def create_lead(
 
     db.add(new_lead)
 
-    # Create notification if lead is assigned during creation
+    # ========================================================
+    # CREATE NOTIFICATION
+    # ========================================================
+
     if (
         lead_data.assigned_to is not None
         and assigned_user is not None
@@ -109,7 +124,10 @@ def create_lead(
 
         db.add(notification)
 
-    # Create audit log
+    # ========================================================
+    # CREATE AUDIT LOG
+    # ========================================================
+
     create_audit_log(
         db=db,
         user_id=current_user.id,
@@ -130,7 +148,18 @@ def create_lead(
     db.commit()
     db.refresh(new_lead)
 
-    return new_lead
+    lead_response = LeadResponse.model_validate(
+        new_lead,
+        from_attributes=True
+    )
+
+    return success_response(
+        data=lead_response.model_dump(
+            mode="json"
+        ),
+        message="Lead created successfully",
+        code=201
+    )
 
 
 # ============================================================
@@ -139,7 +168,7 @@ def create_lead(
 
 @router.get(
     "/",
-    response_model=LeadListResponse
+    response_model=APIResponse
 )
 def list_leads(
     search: str | None = Query(
@@ -193,6 +222,10 @@ def list_leads(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # ========================================================
+    # ALLOWED SORT FIELDS
+    # ========================================================
+
     allowed_sort_fields = {
         "id": Lead.id,
         "name": Lead.name,
@@ -214,6 +247,10 @@ def list_leads(
             )
         )
 
+    # ========================================================
+    # VALIDATE SORT ORDER
+    # ========================================================
+
     sort_order = sort_order.lower()
 
     if sort_order not in {"asc", "desc"}:
@@ -224,6 +261,10 @@ def list_leads(
                 "'asc' or 'desc'"
             )
         )
+
+    # ========================================================
+    # VALIDATE DATE RANGE
+    # ========================================================
 
     if (
         from_date is not None
@@ -238,6 +279,10 @@ def list_leads(
             )
         )
 
+    # ========================================================
+    # BASE QUERY
+    # ========================================================
+
     query = (
         db.query(Lead)
         .filter(
@@ -245,11 +290,16 @@ def list_leads(
         )
     )
 
-    # Search
+    # ========================================================
+    # SEARCH FILTER
+    # ========================================================
+
     if search:
+
         search_value = search.strip()
 
         if search_value:
+
             search_pattern = (
                 f"%{search_value}%"
             )
@@ -271,67 +321,98 @@ def list_leads(
                 )
             )
 
-    # Status filter
+    # ========================================================
+    # STATUS FILTER
+    # ========================================================
+
     if status_filter:
+
         status_value = (
             status_filter.strip()
         )
 
         if status_value:
+
             query = query.filter(
                 Lead.status.ilike(
                     status_value
                 )
             )
 
-    # Source filter
+    # ========================================================
+    # SOURCE FILTER
+    # ========================================================
+
     if source:
+
         source_value = source.strip()
 
         if source_value:
+
             query = query.filter(
                 Lead.source.ilike(
                     source_value
                 )
             )
 
-    # Assigned user filter
+    # ========================================================
+    # ASSIGNED USER FILTER
+    # ========================================================
+
     if assigned_to is not None:
+
         query = query.filter(
             Lead.assigned_to == assigned_to
         )
 
-    # Date range filter
+    # ========================================================
+    # DATE RANGE FILTER
+    # ========================================================
+
     if from_date is not None:
+
         query = query.filter(
             Lead.created_at >= from_date
         )
 
     if to_date is not None:
+
         query = query.filter(
             Lead.created_at <= to_date
         )
 
-    # Count total records
+    # ========================================================
+    # COUNT TOTAL RECORDS
+    # ========================================================
+
     total = query.with_entities(
         func.count(Lead.id)
     ).scalar()
 
-    # Sorting
+    # ========================================================
+    # SORTING
+    # ========================================================
+
     sort_column = (
         allowed_sort_fields[sort_by]
     )
 
     if sort_order == "asc":
+
         query = query.order_by(
             sort_column.asc()
         )
+
     else:
+
         query = query.order_by(
             sort_column.desc()
         )
 
-    # Pagination
+    # ========================================================
+    # PAGINATION
+    # ========================================================
+
     offset = (
         page - 1
     ) * limit
@@ -349,13 +430,31 @@ def list_leads(
         else 0
     )
 
-    return {
-        "items": leads,
-        "page": page,
-        "limit": limit,
-        "total": total,
-        "total_pages": total_pages,
-    }
+    # ========================================================
+    # CONVERT SQLALCHEMY OBJECTS TO PYDANTIC
+    # ========================================================
+
+    lead_list = LeadListResponse(
+        items=[
+            LeadResponse.model_validate(
+                lead,
+                from_attributes=True
+            )
+            for lead in leads
+        ],
+        page=page,
+        limit=limit,
+        total=total,
+        total_pages=total_pages,
+    )
+
+    return success_response(
+        data=lead_list.model_dump(
+            mode="json"
+        ),
+        message="Leads retrieved successfully",
+        code=200
+    )
 
 
 # ============================================================
@@ -364,7 +463,7 @@ def list_leads(
 
 @router.get(
     "/{lead_id}",
-    response_model=LeadResponse
+    response_model=APIResponse
 )
 def get_lead(
     lead_id: int,
@@ -386,7 +485,18 @@ def get_lead(
             detail="Lead not found"
         )
 
-    return lead
+    lead_response = LeadResponse.model_validate(
+        lead,
+        from_attributes=True
+    )
+
+    return success_response(
+        data=lead_response.model_dump(
+            mode="json"
+        ),
+        message="Lead retrieved successfully",
+        code=200
+    )
 
 
 # ============================================================
@@ -395,7 +505,7 @@ def get_lead(
 
 @router.put(
     "/{lead_id}",
-    response_model=LeadResponse
+    response_model=APIResponse
 )
 def update_lead(
     lead_id: int,
@@ -422,8 +532,12 @@ def update_lead(
         exclude_unset=True
     )
 
-    # Check duplicate email
+    # ========================================================
+    # CHECK DUPLICATE EMAIL
+    # ========================================================
+
     if "email" in update_data:
+
         existing_lead = (
             db.query(Lead)
             .filter(
@@ -435,6 +549,7 @@ def update_lead(
         )
 
         if existing_lead:
+
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
@@ -443,11 +558,15 @@ def update_lead(
                 )
             )
 
-    # Validate assigned user
+    # ========================================================
+    # VALIDATE ASSIGNED USER
+    # ========================================================
+
     if (
         "assigned_to" in update_data
         and update_data["assigned_to"] is not None
     ):
+
         assigned_user = (
             db.query(User)
             .filter(
@@ -458,22 +577,31 @@ def update_lead(
         )
 
         if not assigned_user:
+
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Assigned user not found"
             )
 
-    # Capture OLD values
+    # ========================================================
+    # CAPTURE OLD VALUES
+    # ========================================================
+
     old_data = {}
 
     for field in update_data:
+
         old_data[field] = getattr(
             lead,
             field
         )
 
-    # Check whether assignment changed
+    # ========================================================
+    # CHECK ASSIGNMENT CHANGE
+    # ========================================================
+
     old_assigned_to = lead.assigned_to
+
     new_assigned_to = update_data.get(
         "assigned_to"
     )
@@ -484,25 +612,37 @@ def update_lead(
         and new_assigned_to is not None
     )
 
-    # Update Lead
+    # ========================================================
+    # UPDATE LEAD
+    # ========================================================
+
     for field, value in update_data.items():
+
         setattr(
             lead,
             field,
             value
         )
 
-    # Capture NEW values
+    # ========================================================
+    # CAPTURE NEW VALUES
+    # ========================================================
+
     new_data = {}
 
     for field in update_data:
+
         new_data[field] = getattr(
             lead,
             field
         )
 
-    # Create notification if assignment changed
+    # ========================================================
+    # CREATE ASSIGNMENT NOTIFICATION
+    # ========================================================
+
     if assignment_changed:
+
         assigned_user = (
             db.query(User)
             .filter(
@@ -512,6 +652,7 @@ def update_lead(
         )
 
         if assigned_user:
+
             notification = Notification(
                 user_id=assigned_user.id,
                 title="New Lead Assigned",
@@ -525,7 +666,10 @@ def update_lead(
 
             db.add(notification)
 
-    # Create audit log
+    # ========================================================
+    # CREATE AUDIT LOG
+    # ========================================================
+
     create_audit_log(
         db=db,
         user_id=current_user.id,
@@ -538,7 +682,18 @@ def update_lead(
     db.commit()
     db.refresh(lead)
 
-    return lead
+    lead_response = LeadResponse.model_validate(
+        lead,
+        from_attributes=True
+    )
+
+    return success_response(
+        data=lead_response.model_dump(
+            mode="json"
+        ),
+        message="Lead updated successfully",
+        code=200
+    )
 
 
 # ============================================================
@@ -547,7 +702,7 @@ def update_lead(
 
 @router.patch(
     "/{lead_id}/assign",
-    response_model=LeadResponse,
+    response_model=APIResponse,
     dependencies=[
         Depends(require_permission("assign_lead"))
     ]
@@ -572,6 +727,7 @@ def assign_lead(
     )
 
     if not lead:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Lead not found"
@@ -586,24 +742,38 @@ def assign_lead(
     )
 
     if not assigned_user:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Assigned user not found"
         )
 
-    # Capture previous assignment
+    # ========================================================
+    # CAPTURE PREVIOUS ASSIGNMENT
+    # ========================================================
+
     old_assigned_to = lead.assigned_to
 
-    # Check whether assignment actually changed
+    # ========================================================
+    # CHECK ASSIGNMENT CHANGE
+    # ========================================================
+
     assignment_changed = (
         old_assigned_to != assigned_to
     )
 
-    # Update assignment
+    # ========================================================
+    # UPDATE ASSIGNMENT
+    # ========================================================
+
     lead.assigned_to = assigned_to
 
-    # Create notification only for a new assignment
+    # ========================================================
+    # CREATE NOTIFICATION
+    # ========================================================
+
     if assignment_changed:
+
         notification = Notification(
             user_id=assigned_user.id,
             title="New Lead Assigned",
@@ -617,7 +787,10 @@ def assign_lead(
 
         db.add(notification)
 
-    # Create assignment audit log
+    # ========================================================
+    # CREATE AUDIT LOG
+    # ========================================================
+
     create_audit_log(
         db=db,
         user_id=current_user.id,
@@ -634,7 +807,18 @@ def assign_lead(
     db.commit()
     db.refresh(lead)
 
-    return lead
+    lead_response = LeadResponse.model_validate(
+        lead,
+        from_attributes=True
+    )
+
+    return success_response(
+        data=lead_response.model_dump(
+            mode="json"
+        ),
+        message="Lead assigned successfully",
+        code=200
+    )
 
 
 # ============================================================
@@ -643,7 +827,7 @@ def assign_lead(
 
 @router.delete(
     "/{lead_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=APIResponse,
     dependencies=[
         Depends(require_permission("delete_lead"))
     ]
@@ -663,12 +847,16 @@ def delete_lead(
     )
 
     if not lead:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Lead not found"
         )
 
-    # Capture Lead data before soft delete
+    # ========================================================
+    # CAPTURE LEAD DATA BEFORE SOFT DELETE
+    # ========================================================
+
     old_data = {
         "name": lead.name,
         "email": lead.email,
@@ -680,10 +868,16 @@ def delete_lead(
         "created_by": lead.created_by,
     }
 
-    # Soft delete
+    # ========================================================
+    # SOFT DELETE
+    # ========================================================
+
     lead.deleted_at = func.now()
 
-    # Create audit log
+    # ========================================================
+    # CREATE AUDIT LOG
+    # ========================================================
+
     create_audit_log(
         db=db,
         user_id=current_user.id,
@@ -695,4 +889,9 @@ def delete_lead(
 
     db.commit()
 
-    return None
+    return success_response(
+        data=None,
+        message="Lead deleted successfully",
+        code=200
+    )
+

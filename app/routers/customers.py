@@ -6,7 +6,11 @@ from sqlalchemy.orm import Session
 
 from app.core.audit import create_audit_log
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_permission
+from app.core.dependencies import (
+    get_current_user,
+    require_permission,
+)
+from app.core.responses import success_response
 from app.models.customers import Customer
 from app.models.users import User
 from app.schemas.customers import (
@@ -23,9 +27,13 @@ router = APIRouter(
 )
 
 
+# =========================================================
+# CREATE CUSTOMER
+# =========================================================
+
 @router.post(
     "/",
-    response_model=CustomerResponse,
+    response_model=None,
     status_code=status.HTTP_201_CREATED
 )
 def create_customer(
@@ -75,12 +83,20 @@ def create_customer(
     db.commit()
     db.refresh(new_customer)
 
-    return new_customer
+    return success_response(
+        data=new_customer,
+        message="Customer created successfully",
+        code=status.HTTP_201_CREATED
+    )
 
+
+# =========================================================
+# LIST CUSTOMERS
+# =========================================================
 
 @router.get(
     "/",
-    response_model=CustomerListResponse
+    response_model=None
 )
 def list_customers(
     search: str | None = Query(
@@ -132,6 +148,7 @@ def list_customers(
         "updated_at": Customer.updated_at,
     }
 
+    # Validate sort field
     if sort_by not in allowed_sort_fields:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -142,6 +159,7 @@ def list_customers(
             )
         )
 
+    # Validate sort order
     sort_order = sort_order.lower()
 
     if sort_order not in {"asc", "desc"}:
@@ -150,11 +168,15 @@ def list_customers(
             detail="sort_order must be either 'asc' or 'desc'"
         )
 
+    # Base query
     query = (
         db.query(Customer)
-        .filter(Customer.deleted_at.is_(None))
+        .filter(
+            Customer.deleted_at.is_(None)
+        )
     )
 
+    # Search
     if search:
         search_value = search.strip()
 
@@ -170,6 +192,7 @@ def list_customers(
                 )
             )
 
+    # Company filter
     if company:
         company_value = company.strip()
 
@@ -180,15 +203,18 @@ def list_customers(
                 )
             )
 
+    # Created by filter
     if created_by is not None:
         query = query.filter(
             Customer.created_by == created_by
         )
 
+    # Total records
     total = query.with_entities(
         func.count(Customer.id)
     ).scalar()
 
+    # Sorting
     sort_column = allowed_sort_fields[sort_by]
 
     if sort_order == "asc":
@@ -200,7 +226,10 @@ def list_customers(
             sort_column.desc()
         )
 
-    offset = (page - 1) * limit
+    # Pagination
+    offset = (
+        page - 1
+    ) * limit
 
     customers = (
         query
@@ -215,7 +244,8 @@ def list_customers(
         else 0
     )
 
-    return {
+    # Pagination data
+    pagination_data = {
         "items": customers,
         "page": page,
         "limit": limit,
@@ -223,10 +253,20 @@ def list_customers(
         "total_pages": total_pages,
     }
 
+    return success_response(
+        data=pagination_data,
+        message="Customers retrieved successfully",
+        code=status.HTTP_200_OK
+    )
+
+
+# =========================================================
+# GET SINGLE CUSTOMER
+# =========================================================
 
 @router.get(
     "/{customer_id}",
-    response_model=CustomerResponse
+    response_model=None
 )
 def get_customer(
     customer_id: int,
@@ -250,12 +290,20 @@ def get_customer(
             detail="Customer not found"
         )
 
-    return customer
+    return success_response(
+        data=customer,
+        message="Customer retrieved successfully",
+        code=status.HTTP_200_OK
+    )
 
+
+# =========================================================
+# UPDATE CUSTOMER
+# =========================================================
 
 @router.put(
     "/{customer_id}",
-    response_model=CustomerResponse
+    response_model=None
 )
 def update_customer(
     customer_id: int,
@@ -282,6 +330,7 @@ def update_customer(
         exclude_unset=True
     )
 
+    # Check duplicate email
     if "email" in update_data:
         existing_customer = (
             db.query(Customer)
@@ -299,7 +348,7 @@ def update_customer(
                 detail="Customer with this email already exists"
             )
 
-    # Capture only the fields that are actually being updated
+    # Capture old values
     old_data = {}
 
     for field in update_data:
@@ -316,7 +365,7 @@ def update_customer(
             value
         )
 
-    # Capture new values after update
+    # Capture new values
     new_data = {}
 
     for field in update_data:
@@ -338,12 +387,20 @@ def update_customer(
     db.commit()
     db.refresh(customer)
 
-    return customer
+    return success_response(
+        data=customer,
+        message="Customer updated successfully",
+        code=status.HTTP_200_OK
+    )
 
+
+# =========================================================
+# DELETE CUSTOMER
+# =========================================================
 
 @router.delete(
     "/{customer_id}",
-    status_code=status.HTTP_204_NO_CONTENT
+    response_model=None
 )
 def delete_customer(
     customer_id: int,
@@ -388,4 +445,9 @@ def delete_customer(
 
     db.commit()
 
-    return None
+    return success_response(
+        data=None,
+        message="Customer deleted successfully",
+        code=status.HTTP_200_OK
+    )
+

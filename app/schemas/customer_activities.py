@@ -1,7 +1,12 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+)
 
 
 ActivityType = Literal[
@@ -13,13 +18,24 @@ ActivityType = Literal[
 ]
 
 
+# ============================================================
+# CREATE CUSTOMER ACTIVITY REQUEST
+# ============================================================
+
 class CustomerActivityCreate(BaseModel):
     type: ActivityType
-    description: str = Field(..., min_length=1)
+
+    description: str = Field(
+        ...,
+        min_length=1
+    )
 
     @field_validator("description")
     @classmethod
-    def validate_description(cls, value: str) -> str:
+    def validate_description(
+        cls,
+        value: str
+    ) -> str:
         value = value.strip()
 
         if not value:
@@ -28,6 +44,11 @@ class CustomerActivityCreate(BaseModel):
             )
 
         return value
+
+
+# ============================================================
+# CUSTOMER ACTIVITY DATA RESPONSE
+# ============================================================
 
 class CustomerActivityResponse(BaseModel):
     id: int
@@ -42,7 +63,33 @@ class CustomerActivityResponse(BaseModel):
     )
 
 
+# ============================================================
+# CUSTOMER TIMELINE ITEM RESPONSE
+# ============================================================
+
 class CustomerTimelineResponse(BaseModel):
     type: ActivityType
     description: str
     date: datetime
+
+
+# ============================================================
+# STANDARD API RESPONSE - CREATE ACTIVITY
+# ============================================================
+
+class CustomerActivityCreateApiResponse(BaseModel):
+    code: int
+    status: str
+    message: str
+    data: CustomerActivityResponse
+
+
+# ============================================================
+# STANDARD API RESPONSE - CUSTOMER TIMELINE
+# ============================================================
+
+class CustomerTimelineApiResponse(BaseModel):
+    code: int
+    status: str
+    message: str
+    data: list[CustomerTimelineResponse]

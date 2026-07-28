@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
-
+from app.schemas.common import APIResponse
 
 class UserCreate(BaseModel):
     name: str = Field(..., min_length=1)
@@ -50,3 +50,8 @@ class UserResponse(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str
+
+
+class UserRegisterResponse( APIResponse[UserResponse] ): pass 
+class UserLoginResponse( APIResponse[TokenResponse] ): pass 
+class UserProfileResponse( APIResponse[UserResponse] ): pass

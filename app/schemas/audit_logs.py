@@ -23,3 +23,9 @@ class AuditLogListResponse(BaseModel):
     limit: int
     total: int
     total_pages: int
+
+class AuditLogApiResponse(BaseModel):
+    code: int
+    status: str
+    message: str
+    data: AuditLogListResponse

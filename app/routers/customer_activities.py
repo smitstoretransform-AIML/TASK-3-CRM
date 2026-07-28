@@ -3,15 +3,20 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import require_permission
+from app.core.responses import success_response
+
 from app.models.customer_activities import CustomerActivity
 from app.models.customers import Customer
 from app.models.users import User
 
 from app.schemas.customer_activities import (
     CustomerActivityCreate,
+    CustomerActivityCreateApiResponse,
     CustomerActivityResponse,
+    CustomerTimelineApiResponse,
     CustomerTimelineResponse,
 )
+
 
 router = APIRouter(
     prefix="/api/v1/customers",
@@ -19,9 +24,13 @@ router = APIRouter(
 )
 
 
+# ============================================================
+# CREATE CUSTOMER ACTIVITY
+# ============================================================
+
 @router.post(
     "/{customer_id}/activities",
-    response_model=CustomerActivityResponse,
+    response_model=CustomerActivityCreateApiResponse,
     status_code=status.HTTP_201_CREATED
 )
 def create_customer_activity(
@@ -32,7 +41,10 @@ def create_customer_activity(
         require_permission("create_customer_activity")
     )
 ):
+    # --------------------------------------------------------
     # Check if customer exists
+    # --------------------------------------------------------
+
     customer = (
         db.query(Customer)
         .filter(
@@ -48,46 +60,51 @@ def create_customer_activity(
             detail="Customer not found"
         )
 
-    # # Verify created_by user exists
-    # created_by_user = (
-    #     db.query(User)
-    #     .filter(
-    #         User.id == activity_data.created_by
-    #     )
-    #     .first()
-    # )
+    # --------------------------------------------------------
+    # Create customer activity
+    # --------------------------------------------------------
 
-    # if not created_by_user:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_404_NOT_FOUND,
-    #         detail="Created by user not found"
-    #     )
-
-
-
-
-    # Create activity
     new_activity = CustomerActivity(
         customer_id=customer_id,
         type=activity_data.type,
         description=activity_data.description,
         created_by=current_user.id
-)
-
-
-
-
+    )
 
     db.add(new_activity)
+
     db.commit()
     db.refresh(new_activity)
 
-    return new_activity
+    # --------------------------------------------------------
+    # Convert SQLAlchemy model to Pydantic response
+    # --------------------------------------------------------
 
+    activity_response = (
+        CustomerActivityResponse.model_validate(
+            new_activity
+        )
+    )
+
+    # --------------------------------------------------------
+    # Standard success response
+    # --------------------------------------------------------
+
+    return success_response(
+        data=activity_response,
+        message="Customer activity created successfully",
+        code=201
+    )
+
+
+# ============================================================
+# GET CUSTOMER TIMELINE
+# ============================================================
 
 @router.get(
     "/{customer_id}/timeline",
-    response_model=list[CustomerTimelineResponse]
+    response_model=CustomerTimelineApiResponse,
+    status_code=status.HTTP_200_OK
 )
 def get_customer_timeline(
     customer_id: int,
@@ -96,7 +113,10 @@ def get_customer_timeline(
         require_permission("view_customers")
     )
 ):
+    # --------------------------------------------------------
     # Check if customer exists
+    # --------------------------------------------------------
+
     customer = (
         db.query(Customer)
         .filter(
@@ -112,7 +132,10 @@ def get_customer_timeline(
             detail="Customer not found"
         )
 
+    # --------------------------------------------------------
     # Get customer activities
+    # --------------------------------------------------------
+
     activities = (
         db.query(CustomerActivity)
         .filter(
@@ -124,11 +147,26 @@ def get_customer_timeline(
         .all()
     )
 
-    return [
-        {
-            "type": activity.type,
-            "description": activity.description,
-            "date": activity.created_at,
-        }
+    # --------------------------------------------------------
+    # Convert SQLAlchemy models to Pydantic responses
+    # --------------------------------------------------------
+
+    timeline_data = [
+        CustomerTimelineResponse(
+            type=activity.type,
+            description=activity.description,
+            date=activity.created_at
+        )
         for activity in activities
     ]
+
+    # --------------------------------------------------------
+    # Standard success response
+    # --------------------------------------------------------
+
+    return success_response(
+        data=timeline_data,
+        message="Customer timeline retrieved successfully",
+        code=200
+    )
+

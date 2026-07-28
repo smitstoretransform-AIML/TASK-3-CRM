@@ -1,9 +1,9 @@
 {
     "report_date": "2026-07-28",
-    "generated_at": "2026-07-28T09:22:54.364383+00:00",
+    "generated_at": "2026-07-28T11:52:52.283096+00:00",
     "customers": {
-        "total": 10,
-        "new_today": 1
+        "total": 14,
+        "new_today": 5
     },
     "leads": {
         "total": 6,

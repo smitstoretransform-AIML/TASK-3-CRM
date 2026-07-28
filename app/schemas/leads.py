@@ -1,5 +1,6 @@
 from datetime import datetime
 import re
+from typing import Any
 
 from pydantic import (
     BaseModel,
@@ -9,7 +10,6 @@ from pydantic import (
     field_validator,
 )
 
-
 class LeadCreate(BaseModel):
     name: str = Field(...)
     email: EmailStr
@@ -18,65 +18,71 @@ class LeadCreate(BaseModel):
     source: str = Field(...)
     status: str = Field(...)
     assigned_to: int | None = Field(
-        default=None,
-        gt=0
-    )
+    default=None,
+    gt=0
+)
 
-    @field_validator("name", "source", "status")
-    @classmethod
-    def validate_required_strings(
-        cls,
-        value: str
-    ) -> str:
-        value = value.strip()
 
-        if not value:
-            raise ValueError(
-                "This field cannot be empty"
-            )
+@field_validator(
+    "name",
+    "source",
+    "status"
+)
+@classmethod
+def validate_required_strings(
+    cls,
+    value: str
+) -> str:
+    value = value.strip()
 
-        return value
+    if not value:
+        raise ValueError(
+            "This field cannot be empty"
+        )
 
-    @field_validator("phone")
-    @classmethod
-    def validate_phone(
-        cls,
-        value: str
-    ) -> str:
-        value = value.strip()
+    return value
 
-        if not value:
-            raise ValueError(
-                "Phone number cannot be empty"
-            )
+@field_validator("phone")
+@classmethod
+def validate_phone(
+    cls,
+    value: str
+) -> str:
+    value = value.strip()
 
-        if not re.fullmatch(
-            r"\d{10}",
-            value
-        ):
-            raise ValueError(
-                "Phone number must contain exactly 10 digits"
-            )
+    if not value:
+        raise ValueError(
+            "Phone number cannot be empty"
+        )
 
-        return value
+    if not re.fullmatch(
+        r"\d{10}",
+        value
+    ):
+        raise ValueError(
+            "Phone number must contain exactly 10 digits"
+        )
 
-    @field_validator("company")
-    @classmethod
-    def validate_company(
-        cls,
-        value: str | None
-    ) -> str | None:
-        if value is None:
-            return None
+    return value
 
-        value = value.strip()
+@field_validator("company")
+@classmethod
+def validate_company(
+    cls,
+    value: str | None
+) -> str | None:
+    if value is None:
+        return None
 
-        if not value:
-            raise ValueError(
-                "Company cannot be empty if provided"
-            )
+    value = value.strip()
 
-        return value
+    if not value:
+        raise ValueError(
+            "Company cannot be empty if provided"
+        )
+
+    return value
+
 
 
 class LeadUpdate(BaseModel):
@@ -87,75 +93,77 @@ class LeadUpdate(BaseModel):
     source: str | None = None
     status: str | None = None
     assigned_to: int | None = Field(
-        default=None,
-        gt=0
-    )
+    default=None,
+    gt=0
+)
 
-    @field_validator(
-        "name",
-        "source",
-        "status"
-    )
-    @classmethod
-    def validate_optional_strings(
-        cls,
-        value: str | None
-    ) -> str | None:
-        if value is None:
-            return None
 
-        value = value.strip()
+@field_validator(
+    "name",
+    "source",
+    "status"
+)
+@classmethod
+def validate_optional_strings(
+    cls,
+    value: str | None
+) -> str | None:
+    if value is None:
+        return None
 
-        if not value:
-            raise ValueError(
-                "This field cannot be empty"
-            )
+    value = value.strip()
 
-        return value
+    if not value:
+        raise ValueError(
+            "This field cannot be empty"
+        )
 
-    @field_validator("phone")
-    @classmethod
-    def validate_phone(
-        cls,
-        value: str | None
-    ) -> str | None:
-        if value is None:
-            return None
+    return value
 
-        value = value.strip()
+@field_validator("phone")
+@classmethod
+def validate_phone(
+    cls,
+    value: str | None
+) -> str | None:
+    if value is None:
+        return None
 
-        if not value:
-            raise ValueError(
-                "Phone number cannot be empty"
-            )
+    value = value.strip()
 
-        if not re.fullmatch(
-            r"\d{10}",
-            value
-        ):
-            raise ValueError(
-                "Phone number must contain exactly 10 digits"
-            )
+    if not value:
+        raise ValueError(
+            "Phone number cannot be empty"
+        )
 
-        return value
+    if not re.fullmatch(
+        r"\d{10}",
+        value
+    ):
+        raise ValueError(
+            "Phone number must contain exactly 10 digits"
+        )
 
-    @field_validator("company")
-    @classmethod
-    def validate_company(
-        cls,
-        value: str | None
-    ) -> str | None:
-        if value is None:
-            return None
+    return value
 
-        value = value.strip()
+@field_validator("company")
+@classmethod
+def validate_company(
+    cls,
+    value: str | None
+) -> str | None:
+    if value is None:
+        return None
 
-        if not value:
-            raise ValueError(
-                "Company cannot be empty if provided"
-            )
+    value = value.strip()
 
-        return value
+    if not value:
+        raise ValueError(
+            "Company cannot be empty if provided"
+        )
+
+    return value
+
 
 
 class LeadResponse(BaseModel):
@@ -172,9 +180,12 @@ class LeadResponse(BaseModel):
     updated_at: datetime
     deleted_at: datetime | None
 
-    model_config = ConfigDict(
-        from_attributes=True
-    )
+
+model_config = ConfigDict(
+    from_attributes=True
+)
+
+
 
 
 class LeadListResponse(BaseModel):
@@ -183,3 +194,24 @@ class LeadListResponse(BaseModel):
     limit: int
     total: int
     total_pages: int
+
+
+class LeadSingleResponse(BaseModel):
+    code: int
+    status: str
+    message: str
+    data: LeadResponse
+
+
+class LeadListWrapperResponse(BaseModel):
+    code: int
+    status: str
+    message: str
+    data: LeadListResponse
+
+
+class LeadGenericResponse(BaseModel):
+    code: int
+    status: str
+    message: str
+    data: Any | None = None
