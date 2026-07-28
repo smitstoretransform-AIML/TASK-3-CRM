@@ -1,6 +1,13 @@
-from sqlalchemy import Column, Date, ForeignKey, Integer, String, Text
+from sqlalchemy import (
+    Column,
+    Date,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    DateTime,
+)
 from sqlalchemy.sql import func
-from sqlalchemy import DateTime
 
 from app.core.database import Base
 
@@ -52,4 +59,10 @@ class FollowUp(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         nullable=False
+    )
+
+    reminder_sent_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        default=None
     )

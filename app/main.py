@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
 from app.core.database import Base, engine
@@ -8,6 +10,12 @@ from app.models import (
     User,
     Customer,
 )
+
+from app.background.scheduler import (
+    start_scheduler,
+    stop_scheduler,
+)
+
 from app.routers.auth import router as auth_router
 from app.routers.customers import router as customer_router
 from app.routers import permissions
@@ -18,17 +26,30 @@ from app.routers.follow_ups import router as follow_ups_router
 from app.routers.notifications import router as notifications_router
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Start background scheduler
+    start_scheduler()
 
-Base.metadata.create_all(bind=engine)
+    yield
+
+    # Stop background scheduler
+    stop_scheduler()
 
 
 app = FastAPI(
     title="CRM Task 3 API",
     description="CRM System Enhancement - Lead Management Module",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 
+# Create database tables if they do not exist
+Base.metadata.create_all(bind=engine)
+
+
+# Register routers
 app.include_router(auth_router)
 app.include_router(customer_router)
 app.include_router(permissions.router)
@@ -51,3 +72,4 @@ def health_check():
     return {
         "status": "healthy"
     }
+
