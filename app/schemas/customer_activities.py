@@ -6,6 +6,7 @@ from pydantic import (
     ConfigDict,
     Field,
     field_validator,
+    model_validator,
 )
 
 
@@ -23,6 +24,18 @@ ActivityType = Literal[
 # ============================================================
 
 class CustomerActivityCreate(BaseModel):
+
+    # Activity can belong to a Lead OR Customer
+    lead_id: int | None = Field(
+        default=None,
+        gt=0
+    )
+
+    customer_id: int | None = Field(
+        default=None,
+        gt=0
+    )
+
     type: ActivityType
 
     description: str = Field(
@@ -30,12 +43,44 @@ class CustomerActivityCreate(BaseModel):
         min_length=1
     )
 
+    # --------------------------------------------------------
+    # VALIDATE LEAD / CUSTOMER OWNERSHIP
+    # --------------------------------------------------------
+
+    @model_validator(mode="after")
+    def validate_activity_owner(self):
+
+        # Neither Lead nor Customer provided
+        if (
+            self.lead_id is None
+            and self.customer_id is None
+        ):
+            raise ValueError(
+                "Either lead_id or customer_id must be provided"
+            )
+
+        # Both Lead and Customer provided
+        if (
+            self.lead_id is not None
+            and self.customer_id is not None
+        ):
+            raise ValueError(
+                "Only one of lead_id or customer_id can be provided"
+            )
+
+        return self
+
+    # --------------------------------------------------------
+    # VALIDATE DESCRIPTION
+    # --------------------------------------------------------
+
     @field_validator("description")
     @classmethod
     def validate_description(
         cls,
         value: str
     ) -> str:
+
         value = value.strip()
 
         if not value:
@@ -47,15 +92,23 @@ class CustomerActivityCreate(BaseModel):
 
 
 # ============================================================
-# CUSTOMER ACTIVITY DATA RESPONSE
+# ACTIVITY DATA RESPONSE
 # ============================================================
 
 class CustomerActivityResponse(BaseModel):
+
     id: int
-    customer_id: int
+
+    lead_id: int | None
+
+    customer_id: int | None
+
     type: ActivityType
+
     description: str
+
     created_by: int
+
     created_at: datetime
 
     model_config = ConfigDict(
@@ -68,8 +121,19 @@ class CustomerActivityResponse(BaseModel):
 # ============================================================
 
 class CustomerTimelineResponse(BaseModel):
+
+    id: int
+
+    lead_id: int | None
+
+    customer_id: int | None
+
     type: ActivityType
+
     description: str
+
+    created_by: int
+
     date: datetime
 
 
@@ -78,9 +142,13 @@ class CustomerTimelineResponse(BaseModel):
 # ============================================================
 
 class CustomerActivityCreateApiResponse(BaseModel):
+
     code: int
+
     status: str
+
     message: str
+
     data: CustomerActivityResponse
 
 
@@ -89,7 +157,11 @@ class CustomerActivityCreateApiResponse(BaseModel):
 # ============================================================
 
 class CustomerTimelineApiResponse(BaseModel):
+
     code: int
+
     status: str
+
     message: str
+
     data: list[CustomerTimelineResponse]
