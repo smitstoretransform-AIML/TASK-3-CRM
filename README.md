@@ -1,20 +1,22 @@
 # CRM System Enhancement – Lead Management Module
 
-A production-oriented CRM backend API built with **Python, FastAPI, SQLAlchemy, PostgreSQL, JWT Authentication, Role-Based Access Control (RBAC), Audit Logging, Notifications, Background Processing, and Automated API Testing**.
+## Task 3: CRM Lead Management & Workflow Automation APIs
 
-This project extends the CRM API system developed in Task 2 by adding Lead Management, Customer Activity Tracking, Follow-up Management, Role-Based Access Control, Notifications, Audit Logging, and Background Processing.
+A production-oriented CRM backend API built with **Python FastAPI**, **SQLAlchemy**, **PostgreSQL (Neon)**, **JWT Authentication**, **Role-Based Access Control (RBAC)**, **Audit Logging**, **Notifications**, **Background Processing**, and **Email Notifications**.
+
+This project extends the Customer Management foundation developed in Task 2 by introducing a complete CRM workflow for lead management, customer interactions, follow-ups, permissions, notifications, audit tracking, and automated background processes.
 
 ---
 
-## 1. Project Overview
+# 1. Project Overview
 
-### Project Name
+## Project Name
 
 **CRM System Enhancement – Lead Management Module**
 
-### Objective
+## Objective
 
-The objective of this project is to extend an existing CRM API system with real-world CRM workflow features, including:
+The objective of this project is to extend the existing CRM API system with:
 
 * Lead Management
 * Customer Activity Tracking
@@ -23,12 +25,13 @@ The objective of this project is to extend an existing CRM API system with real-
 * Role-Based Access Control
 * Permission Management
 * Lead Assignment
-* Notification System
+* Notifications
 * Audit Logging
 * Background Processing
-* API Testing
+* Email Notifications
+* CRM workflow automation
 
-The system is designed using a modular FastAPI architecture with reusable database models, Pydantic schemas, API routers, authentication, authorization, and standardized API responses.
+The project follows a modular FastAPI architecture and provides RESTful APIs documented through Swagger/OpenAPI.
 
 ---
 
@@ -45,14 +48,13 @@ The system is designed using a modular FastAPI architecture with reusable databa
 ## Database
 
 * PostgreSQL
-* Neon PostgreSQL for cloud database hosting
-* SQLite for automated test database
+* Neon PostgreSQL
 
 ## Authentication
 
 * JWT Authentication
-* Password hashing
-* Token-based authentication
+* Password Hashing
+* Protected API endpoints
 
 ## Authorization
 
@@ -64,19 +66,23 @@ The system is designed using a modular FastAPI architecture with reusable databa
 * Swagger UI
 * OpenAPI
 
-## API Testing
+Available at:
 
-* Pytest
+```text
+/docs
+```
+
+## Testing
+
+* Postman
 * Postman Collection
-
-## Database Migration
-
-* Alembic
+* Pytest setup for automated API testing
 
 ## Background Processing
 
 * Background scheduler
-* Scheduled CRM workflow processing
+* Automated follow-up reminder processing
+* Email notification processing
 
 ## Version Control
 
@@ -85,139 +91,855 @@ The system is designed using a modular FastAPI architecture with reusable databa
 
 ---
 
-# 3. Main Features
+# 3. Core Features
 
-The application provides the following major features:
+The project provides the following major modules:
 
-### Authentication
+```text
+Authentication
+    ↓
+Role & Permission Management
+    ↓
+Customer Management
+    ↓
+Lead Management
+    ↓
+Lead Assignment
+    ↓
+Customer Activities
+    ↓
+Customer Timeline
+    ↓
+Follow-up Management
+    ↓
+Notifications
+    ↓
+Audit Logging
+    ↓
+Background Processing
+    ↓
+Email Notifications
+```
 
-* User Registration
-* User Login
-* JWT Token Authentication
-* Current User Authentication
-* Protected API endpoints
+---
 
-### Customer Management
+# 4. Authentication
 
-* Create Customer
-* Get Customer
-* List Customers
-* Update Customer
-* Soft Delete Customer
-* Customer Search
-* Pagination
-* Filtering
-* Sorting
+The API provides secure user authentication using JWT.
 
-### Lead Management
+## Registration
 
-* Create Lead
-* List Leads
-* Get Single Lead
-* Update Lead
-* Assign Lead
-* Soft Delete Lead
-* Lead Search
-* Lead Filtering
-* Lead Pagination
-* Lead Sorting
-* Date Range Filtering
+Users can register using the registration API.
 
-### Customer Activity Timeline
+The registration flow is:
 
-* Create Customer Activity
-* Get Customer Timeline
-* Track:
+```text
+Registration Request
+        ↓
+Validate Input
+        ↓
+Check Existing Email
+        ↓
+Hash Password
+        ↓
+Create User
+        ↓
+Save User
+```
 
-  * Calls
-  * Emails
-  * Meetings
-  * Notes
-  * Follow-ups
+Passwords are stored securely using hashing rather than plain-text storage.
 
-### Follow-up Management
+## Login
 
-* Create Follow-up
-* List Follow-ups
-* Filter by Status
-* Filter by Customer
-* Today's Follow-ups
-* Upcoming Follow-ups
-* Overdue Follow-ups
-* Update Follow-up Status
-* Pagination
+The login flow is:
 
-### Role-Based Access Control
+```text
+Login Request
+        ↓
+Find User
+        ↓
+Verify Password
+        ↓
+Generate JWT
+        ↓
+Return Access Token
+```
 
-The system supports role-based permissions for CRM operations.
+The access token is then used to access protected APIs.
 
-Available roles include:
+Example:
+
+```text
+Authorization: Bearer <JWT_TOKEN>
+```
+
+---
+
+# 5. Role-Based Access Control
+
+The application implements Role-Based Access Control with permission-based authorization.
+
+## Available Roles
 
 * Admin
 * Manager
 * Sales Executive
 * Viewer
 
-Permissions include:
+## Permission-Based Authorization
+
+APIs use permission checks to determine whether the authenticated user is allowed to perform an operation.
+
+Examples of permissions include:
+
+```text
+create_lead
+delete_lead
+assign_lead
+view_customers
+manage_users
+create_followup
+update_followup
+create_customer_activity
+view_audit_logs
+```
+
+The permission system is implemented using:
+
+```text
+Users
+    ↓
+Roles
+    ↓
+Role Permissions
+    ↓
+Permissions
+    ↓
+Protected API
+```
+
+Unauthorized access is rejected with an appropriate HTTP response.
+
+Expected security behavior:
+
+```text
+No Token
+    ↓
+401 Unauthorized
+
+Invalid Token
+    ↓
+401 Unauthorized
+
+Valid Token + Missing Permission
+    ↓
+403 Forbidden
+
+Valid Token + Required Permission
+    ↓
+API Access Granted
+```
+
+---
+
+# 6. Customer Management
+
+The CRM provides customer management functionality.
+
+## Features
+
+* Create Customer
+* Get Customer
+* List Customers
+* Update Customer
+* Delete Customer
+* Search Customers
+* Pagination
+* Filtering
+* Sorting
+* Soft Delete
+
+Customers are associated with the authenticated user who creates them.
+
+Soft-deleted customers are excluded from normal customer queries.
+
+---
+
+# 7. Lead Management
+
+The Lead Management module is the primary feature of Task 3.
+
+## Features
 
 * Create Lead
-* Delete Lead
-* View Customers
+* Get Lead
+* List Leads
+* Update Lead
 * Assign Lead
-* Manage Users
-* Create Customer Activity
+* Delete Lead
+* Search Leads
+* Filter Leads
+* Sort Leads
+* Pagination
+* Date Range Filtering
+* Soft Delete
+
+## Lead Search
+
+Leads can be searched using:
+
+* Name
+* Email
+* Phone
+* Company
+
+## Lead Filters
+
+Supported filters include:
+
+* Status
+* Source
+* Assigned User
+* Date Range
+
+## Lead Sorting
+
+Leads can be sorted by supported fields such as:
+
+* ID
+* Name
+* Email
+* Company
+* Source
+* Status
+* Created Date
+* Updated Date
+
+Both ascending and descending sorting are supported.
+
+## Lead Assignment
+
+Leads can be assigned to users with the required permission.
+
+The workflow is:
+
+```text
+Lead Created
+      ↓
+Lead Assigned
+      ↓
+Assigned User Receives Notification
+      ↓
+Assignment Recorded in Audit Log
+```
+
+When a lead is assigned to a user, a notification is generated.
+
+---
+
+# 8. Customer Activity Timeline
+
+The CRM maintains a complete history of customer interactions.
+
+Supported activity types:
+
+* Call
+* Email
+* Meeting
+* Note
+* Follow-up
+
+## Create Activity
+
+Activities can be created against an existing customer.
+
+Example workflow:
+
+```text
+Customer
+    ↓
+Create Activity
+    ↓
+Activity Stored
+    ↓
+Activity Appears in Timeline
+```
+
+## Customer Timeline
+
+The timeline API returns customer interaction history ordered by activity creation time.
+
+Example:
+
+```text
+Customer
+    │
+    ├── Call
+    ├── Email
+    ├── Meeting
+    ├── Note
+    └── Follow-up
+```
+
+---
+
+# 9. Follow-up Management
+
+The Follow-up module manages customer follow-up activities.
+
+## Features
+
 * Create Follow-up
-* Update Follow-up
-* View Audit Logs
+* List Follow-ups
+* Filter by Customer
+* Filter by Status
+* Filter by Date
+* Today's Follow-ups
+* Upcoming Follow-ups
+* Overdue Follow-ups
+* Update Follow-up Status
 
-### Notification System
+## Follow-up Statuses
 
-Notifications are generated for important workflow events.
+```text
+pending
+completed
+cancelled
+```
 
-For example:
+## Follow-up Date Categories
 
-* When a lead is assigned to a user
-* When a new lead is assigned during lead creation
-* When a lead assignment changes
+```text
+Today
+Upcoming
+Overdue
+```
 
-Users can:
+The overdue filter identifies pending follow-ups whose scheduled date has passed.
 
-* Get their notifications
-* Filter notifications by read status
-* Mark notifications as read/unread
+---
 
-### Audit Logging
+# 10. Notification System
 
-The application maintains an audit trail for important operations.
+The CRM includes a notification mechanism for user-specific notifications.
 
-Audit logs store:
+## Example
 
-* User ID
-* Action
-* Module
-* Previous data
-* New data
-* Created timestamp
+When a lead is assigned:
 
-Audit logging is implemented for important CRM operations such as:
+```text
+New Lead Assigned
 
+John Smith assigned to Alex
+```
+
+Notifications are stored in the database and associated with the target user.
+
+## Notification Features
+
+* List Notifications
+* Filter by Read/Unread Status
+* Pagination
+* Mark Notification as Read
+* Mark Notification as Unread
+
+Users can only access their own notifications.
+
+---
+
+# 11. Audit Logging
+
+The application maintains audit logs for important business operations.
+
+Audit logging is used to track changes and provide historical information about system activity.
+
+## Logged Operations
+
+Examples include:
+
+* Customer creation
+* Customer update
+* Customer deletion
 * Lead creation
 * Lead update
 * Lead assignment
 * Lead deletion
-* Customer operations
 * Follow-up creation
 * Follow-up status updates
 
-### Background Processing
+## Audit Data
 
-The application includes background scheduler functionality for automated CRM workflow processing.
+Audit records include:
 
-The application starts the scheduler during application startup and stops it during application shutdown.
+```text
+user_id
+action
+module
+old_data
+new_data
+created_at
+```
+
+Example:
+
+```text
+User: Alex
+Action: UPDATE
+Module: customers
+
+Old:
+{
+    "email": "abc@test.com"
+}
+
+New:
+{
+    "email": "xyz@test.com"
+}
+```
+
+## Audit Log API Features
+
+* List Audit Logs
+* Filter by User
+* Filter by Action
+* Filter by Module
+* Filter by Date Range
+* Pagination
+* Sorting
+
+Audit logs provide traceability for important CRM operations.
 
 ---
 
-# 4. Project Structure
+# 12. Background Processing
+
+The application includes background processing for automated CRM operations.
+
+The background scheduler is integrated with the FastAPI application lifecycle.
+
+```text
+FastAPI Startup
+      ↓
+Scheduler Starts
+      ↓
+Background Jobs Run
+      ↓
+FastAPI Shutdown
+      ↓
+Scheduler Stops
+```
+
+Background processing supports automated follow-up reminder workflows and email notifications.
+
+---
+
+# 13. Email Notifications
+
+The application supports email notifications for CRM follow-up reminders.
+
+The workflow is:
+
+```text
+Follow-up Created
+      ↓
+Follow-up Becomes Eligible
+      ↓
+Background Scheduler Detects Follow-up
+      ↓
+Email Reminder Sent
+      ↓
+reminder_sent_at Updated
+```
+
+The `reminder_sent_at` field is used to prevent duplicate reminder emails.
+
+```text
+reminder_sent_at = NULL
+        ↓
+Email Sent Successfully
+        ↓
+reminder_sent_at = Timestamp
+        ↓
+Future Scheduler Runs
+        ↓
+Reminder Skipped
+```
+
+The email functionality was verified using a real accessible test email address.
+
+The verification confirmed:
+
+* Email configuration works
+* Email delivery works
+* Follow-up reminder processing works
+* Reminder timestamp is updated
+* Duplicate reminders are prevented
+
+---
+
+# 14. Database Design
+
+The application uses PostgreSQL hosted on Neon.
+
+The current CRM database contains the following 10 main tables:
+
+```text
+users
+roles
+permissions
+role_permissions
+customers
+leads
+customer_activities
+followups
+audit_logs
+notifications
+```
+
+## Database Relationship Overview
+
+```text
+roles
+  │
+  └── users
+        │
+        ├── customers
+        │      ├── customer_activities
+        │      └── followups
+        │
+        ├── leads
+        │      ├── created_by
+        │      └── assigned_to
+        │
+        ├── audit_logs
+        │
+        └── notifications
+
+roles
+  │
+  └── role_permissions
+          │
+          └── permissions
+```
+
+---
+
+# 15. Database Tables
+
+## users
+
+Stores application users.
+
+Main fields:
+
+```text
+id
+name
+email
+password
+role_id
+created_at
+```
+
+Relationship:
+
+```text
+users.role_id → roles.id
+```
+
+---
+
+## roles
+
+Stores application roles.
+
+Main fields:
+
+```text
+id
+name
+```
+
+Available roles:
+
+```text
+Admin
+Manager
+Sales Executive
+Viewer
+```
+
+---
+
+## permissions
+
+Stores available system permissions.
+
+Main fields:
+
+```text
+id
+name
+```
+
+---
+
+## role_permissions
+
+Maps roles to permissions.
+
+Main fields:
+
+```text
+id
+role_id
+permission_id
+```
+
+Relationships:
+
+```text
+role_id → roles.id
+permission_id → permissions.id
+```
+
+---
+
+## customers
+
+Stores CRM customer records.
+
+Main fields:
+
+```text
+id
+name
+email
+phone
+company
+created_by
+created_at
+updated_at
+deleted_at
+```
+
+Relationships:
+
+```text
+created_by → users.id
+```
+
+Soft deletion is implemented using:
+
+```text
+deleted_at
+```
+
+---
+
+## leads
+
+Stores CRM sales leads.
+
+Main fields:
+
+```text
+id
+name
+email
+phone
+company
+source
+status
+assigned_to
+created_by
+created_at
+updated_at
+deleted_at
+```
+
+Relationships:
+
+```text
+assigned_to → users.id
+created_by → users.id
+```
+
+Lead deletion uses soft delete.
+
+---
+
+## customer_activities
+
+Stores customer interaction history.
+
+Main fields:
+
+```text
+id
+customer_id
+type
+description
+created_by
+created_at
+```
+
+Relationships:
+
+```text
+customer_id → customers.id
+created_by → users.id
+```
+
+---
+
+## followups
+
+Stores customer follow-up records.
+
+Main fields:
+
+```text
+id
+customer_id
+date
+type
+status
+notes
+created_at
+reminder_sent_at
+```
+
+Relationship:
+
+```text
+customer_id → customers.id
+```
+
+---
+
+## audit_logs
+
+Stores historical system activity.
+
+Main fields:
+
+```text
+id
+user_id
+action
+module
+old_data
+new_data
+created_at
+```
+
+Relationship:
+
+```text
+user_id → users.id
+```
+
+---
+
+## notifications
+
+Stores user-specific notifications.
+
+Main fields:
+
+```text
+id
+user_id
+title
+message
+is_read
+created_at
+```
+
+Relationship:
+
+```text
+user_id → users.id
+```
+
+---
+
+# 16. API Response Format
+
+The application uses a standardized API response format.
+
+Successful response:
+
+```json
+{
+    "code": 200,
+    "status": "Success",
+    "message": "Request successful",
+    "data": {}
+}
+```
+
+Error response:
+
+```json
+{
+    "code": 400,
+    "status": "Error",
+    "message": "Request failed",
+    "data": null
+}
+```
+
+This standard response structure is implemented through the application's response utilities.
+
+---
+
+# 17. Error Handling
+
+The application provides centralized exception handling for:
+
+* HTTP exceptions
+* Validation errors
+* Unexpected server errors
+
+Common HTTP responses include:
+
+```text
+400 Bad Request
+401 Unauthorized
+403 Forbidden
+404 Not Found
+422 Unprocessable Entity
+500 Internal Server Error
+```
+
+Validation errors are handled centrally and returned using the standard API response structure.
+
+---
+
+# 18. API Documentation
+
+Swagger UI is available through FastAPI's automatic OpenAPI documentation.
+
+Run the application and open:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+Alternative OpenAPI documentation:
+
+```text
+http://127.0.0.1:8000/redoc
+```
+
+---
+
+# 19. Project Structure
+
+The project follows a modular FastAPI architecture.
 
 ```text
 TASK-3/
@@ -233,54 +955,49 @@ TASK-3/
 │   │   ├── database.py
 │   │   ├── dependencies.py
 │   │   ├── exception_handlers.py
-│   │   └── responses.py
+│   │   ├── responses.py
+│   │   └── ...
 │   │
 │   ├── models/
-│   │   ├── __init__.py
+│   │   ├── users.py
 │   │   ├── roles.py
 │   │   ├── permissions.py
 │   │   ├── role_permissions.py
-│   │   ├── users.py
 │   │   ├── customers.py
 │   │   ├── leads.py
-│   │   ├── audit_logs.py
 │   │   ├── customer_activities.py
 │   │   ├── follow_ups.py
+│   │   ├── audit_logs.py
 │   │   └── notifications.py
 │   │
 │   ├── routers/
 │   │   ├── auth.py
 │   │   ├── customers.py
-│   │   ├── permissions.py
 │   │   ├── leads.py
-│   │   ├── audit_logs.py
+│   │   ├── permissions.py
 │   │   ├── customer_activities.py
 │   │   ├── follow_ups.py
+│   │   ├── audit_logs.py
 │   │   └── notifications.py
 │   │
 │   ├── schemas/
 │   │   ├── users.py
 │   │   ├── customers.py
 │   │   ├── leads.py
-│   │   ├── audit_logs.py
 │   │   ├── customer_activities.py
 │   │   ├── follow_ups.py
+│   │   ├── audit_logs.py
 │   │   └── notifications.py
 │   │
 │   └── main.py
 │
 ├── alembic/
-│   ├── versions/
-│   ├── env.py
-│   └── script.py.mako
+│   └── versions/
 │
 ├── tests/
 │   ├── __init__.py
 │   ├── conftest.py
-│   ├── test_auth.py
-│   ├── test_customers.py
-│   ├── test_leads.py
-│   └── test_permissions.py
+│   └── ...
 │
 ├── pytest.ini
 ├── alembic.ini
@@ -291,11 +1008,9 @@ TASK-3/
 
 ---
 
-# 5. Installation Steps
+# 20. Environment Setup
 
-## Step 1: Clone the Repository
-
-Clone the project from GitHub:
+## Step 1 — Clone the Repository
 
 ```bash
 git clone <YOUR_GITHUB_REPOSITORY_URL>
@@ -309,31 +1024,23 @@ cd TASK-3
 
 ---
 
-## Step 2: Create a Virtual Environment
+## Step 2 — Create Virtual Environment
 
-Create a Python virtual environment:
+Windows:
 
-```bash
+```powershell
 python -m venv SMS_venv
 ```
 
-Activate the virtual environment on Windows PowerShell:
+Activate:
 
 ```powershell
-.\SMS_venv\Scripts\Activate.ps1
-```
-
-If using Command Prompt:
-
-```cmd
 SMS_venv\Scripts\activate
 ```
 
 ---
 
-## Step 3: Install Dependencies
-
-Install all required dependencies:
+## Step 3 — Install Dependencies
 
 ```bash
 pip install -r requirements.txt
@@ -341,209 +1048,59 @@ pip install -r requirements.txt
 
 ---
 
-## Step 4: Install Testing Dependencies
+## Step 4 — Configure Environment Variables
 
-Install Pytest and HTTP testing support:
-
-```bash
-pip install pytest httpx
-```
-
-If required by the project environment:
-
-```bash
-pip install sqlalchemy
-```
-
----
-
-# 6. Environment Setup
-
-Create a `.env` file in the root project directory.
+Create a `.env` file in the project root.
 
 Example:
 
 ```env
-DATABASE_URL=postgresql+psycopg://username:password@host/database
-SECRET_KEY=your-secret-key
+DATABASE_URL=postgresql://<username>:<password>@<host>/<database>
+
+SECRET_KEY=<your-secret-key>
+
 ALGORITHM=HS256
+
 ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+SMTP_HOST=<smtp-host>
+
+SMTP_PORT=<smtp-port>
+
+SMTP_USERNAME=<smtp-username>
+
+SMTP_PASSWORD=<smtp-password>
+
+FROM_EMAIL=<sender-email>
 ```
 
-### Environment Variables
-
-| Variable                      | Description                                |
-| ----------------------------- | ------------------------------------------ |
-| `DATABASE_URL`                | PostgreSQL/Neon database connection string |
-| `SECRET_KEY`                  | Secret key used for JWT authentication     |
-| `ALGORITHM`                   | JWT signing algorithm                      |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | JWT token expiration time                  |
-
-### Important
-
-Do not commit the `.env` file to GitHub.
-
-Add `.env` to `.gitignore`:
-
-```gitignore
-.env
-SMS_venv/
-__pycache__/
-.pytest_cache/
-*.pyc
-```
+Never commit real passwords, secrets, database credentials, or SMTP credentials to GitHub.
 
 ---
 
-# 7. Database Setup
+# 21. Database Setup
 
-The project uses **PostgreSQL** as the primary application database.
+The project uses PostgreSQL/Neon.
 
-The application database is hosted using **Neon PostgreSQL**.
+Configure the database connection using:
 
-SQLAlchemy is used as the ORM layer.
-
-Database configuration is handled through:
-
-```text
-app/core/database.py
+```env
+DATABASE_URL=...
 ```
 
-The database connection is configured using the `DATABASE_URL` environment variable.
-
----
-
-## Database Connection
-
-The application uses:
-
-```python
-engine = create_engine(
-    settings.DATABASE_URL,
-    echo=True
-)
-```
-
-The SQLAlchemy session is provided through the `get_db()` dependency.
-
----
-
-## Database Migration
-
-The project uses Alembic for database migrations.
-
-Create a new migration:
-
-```bash
-alembic revision --autogenerate -m "migration message"
-```
-
-Apply migrations:
+Run Alembic migrations:
 
 ```bash
 alembic upgrade head
 ```
 
-Rollback the latest migration:
-
-```bash
-alembic downgrade -1
-```
-
-Check the current migration:
-
-```bash
-alembic current
-```
-
-Check migration history:
-
-```bash
-alembic history
-```
+The database contains the CRM tables and their required relationships.
 
 ---
 
-# 8. Database Tables
+# 22. Run the Application
 
-The project contains the following major database entities:
-
-* Users
-* Roles
-* Permissions
-* Role Permissions
-* Customers
-* Leads
-* Audit Logs
-* Customer Activities
-* Follow-ups
-* Notifications
-
-### Users
-
-Stores CRM user accounts and authentication information.
-
-### Roles
-
-Stores available user roles:
-
-* Admin
-* Manager
-* Sales Executive
-* Viewer
-
-### Permission Matrix
-
-| Permission / Feature     | Admin | Manager | Sales Executive | Viewer |
-| ------------------------ | ----: | ------: | --------------: | -----: |
-| Create Lead              |   Yes |     Yes |             Yes |     No |
-| Delete Lead              |   Yes |     Yes |              No |     No |
-| View Customers           |   Yes |     Yes |             Yes |    Yes |
-| Assign Lead              |   Yes |     Yes |              No |     No |
-| Manage Users             |   Yes |      No |              No |     No |
-| Create Customer Activity |   Yes |     Yes |             Yes |     No |
-| Create Follow-up         |   Yes |     Yes |             Yes |     No |
-| Update Follow-up         |   Yes |     Yes |             Yes |     No |
-| View Audit Logs          |   Yes |      No |              No |     No |
-
-
-### Permissions
-
-Stores individual permissions available in the system.
-
-### Role Permissions
-
-Maps roles to their assigned permissions.
-
-### Customers
-
-Stores CRM customer information.
-
-### Leads
-
-Stores sales lead information and assignment details.
-
-### Audit Logs
-
-Stores historical records of important system operations.
-
-### Customer Activities
-
-Stores customer interaction history.
-
-### Follow-ups
-
-Stores scheduled customer follow-ups and their status.
-
-### Notifications
-
-Stores user-specific system notifications.
-
----
-
-# 9. Run the Application
-
-Start the FastAPI application using Uvicorn:
+Start FastAPI using:
 
 ```bash
 uvicorn app.main:app --reload
@@ -555,1072 +1112,346 @@ The API will be available at:
 http://127.0.0.1:8000
 ```
 
----
-
-# 10. API Documentation
-
-FastAPI automatically provides interactive API documentation.
-
-## Swagger UI
-
-Open:
+Swagger documentation:
 
 ```text
 http://127.0.0.1:8000/docs
 ```
-
-Swagger can be used to:
-
-* View all API endpoints
-* View request schemas
-* View response schemas
-* Test APIs
-* Authenticate using JWT
-* Verify API responses
-
----
-
-## ReDoc
-
-Open:
-
-```text
-http://127.0.0.1:8000/redoc
-```
-
----
-
-# 11. API Usage
-
-All application APIs use the following base URL:
-
-```text
-http://127.0.0.1:8000/api/v1
-```
-
-Authentication-protected endpoints require a JWT token.
-
-The token should be provided using the HTTP Authorization header:
-
-```text
-Authorization: Bearer <access_token>
-```
-
----
-
-# 12. Authentication APIs
-
-## Register User
-
-```http
-POST /api/v1/auth/register
-```
-
-Purpose:
-
-Creates a new CRM user account.
-
----
-
-## Login
-
-```http
-POST /api/v1/auth/login
-```
-
-Purpose:
-
-Authenticates the user and returns a JWT access token.
-
-The returned access token should be used for protected API requests.
-
----
-
-# 13. Customer APIs
-
-Customer management APIs provide CRUD operations and support search, filtering, pagination, and sorting.
-
-Typical operations include:
-
-```http
-POST /api/v1/customers/
-GET /api/v1/customers/
-GET /api/v1/customers/{customer_id}
-PUT /api/v1/customers/{customer_id}
-DELETE /api/v1/customers/{customer_id}
-```
-
-Customer APIs support:
-
-* Customer creation
-* Customer listing
-* Customer retrieval
-* Customer updates
-* Soft deletion
-* Search
-* Pagination
-* Filtering
-* Sorting
-
----
-
-# 14. Lead APIs
-
-The Lead Management module provides complete sales lead management.
-
-## Create Lead
-
-```http
-POST /api/v1/leads/
-```
-
-Example request:
-
-```json
-{
-    "name": "John Smith",
-    "email": "john@test.com",
-    "phone": "+123456789",
-    "company": "ABC Corporation",
-    "source": "Website",
-    "status": "New"
-}
-```
-
----
-
-## List Leads
-
-```http
-GET /api/v1/leads/
-```
-
-Pagination example:
-
-```text
-GET /api/v1/leads/?page=1&limit=20
-```
-
-Search example:
-
-```text
-GET /api/v1/leads/?search=john
-```
-
-Status filter:
-
-```text
-GET /api/v1/leads/?status=Qualified
-```
-
-Assigned user filter:
-
-```text
-GET /api/v1/leads/?assigned_to=5
-```
-
-Date range filter:
-
-```text
-GET /api/v1/leads/?from_date=2026-07-01&to_date=2026-07-31
-```
-
-Sorting:
-
-```text
-GET /api/v1/leads/?sort_by=created_at&sort_order=desc
-```
-
----
-
-## Get Single Lead
-
-```http
-GET /api/v1/leads/{lead_id}
-```
-
----
-
-## Update Lead
-
-```http
-PUT /api/v1/leads/{lead_id}
-```
-
-Example:
-
-```json
-{
-    "status": "Qualified",
-    "company": "XYZ Ltd"
-}
-```
-
----
-
-## Assign Lead
-
-```http
-PATCH /api/v1/leads/{lead_id}/assign
-```
-
-Example:
-
-```text
-PATCH /api/v1/leads/1/assign?assigned_to=5
-```
-
-When a lead is assigned to a user, the system creates a notification for the assigned user.
-
----
-
-## Delete Lead
-
-```http
-DELETE /api/v1/leads/{lead_id}
-```
-
-Lead deletion is implemented as a soft delete.
-
-The deletion is also recorded through audit logging.
-
----
-
-# 15. Customer Activity APIs
-
-Customer activities maintain the interaction history of a customer.
-
-Supported activity types:
-
-* Call
-* Email
-* Meeting
-* Note
-* Follow-up
-
----
-
-## Create Customer Activity
-
-```http
-POST /api/v1/customers/{customer_id}/activities
-```
-
-Example request:
-
-```json
-{
-    "type": "Call",
-    "description": "Discussed pricing and requirements"
-}
-```
-
-The authenticated user is automatically stored as the activity creator.
-
----
-
-## Get Customer Timeline
-
-```http
-GET /api/v1/customers/{customer_id}/timeline
-```
-
-The timeline contains the customer's historical activities.
-
-Example response data:
-
-```json
-[
-    {
-        "type": "Call",
-        "description": "Discussed pricing",
-        "date": "2026-07-21T10:30:00"
-    },
-    {
-        "type": "Email",
-        "description": "Proposal sent",
-        "date": "2026-07-22T11:00:00"
-    }
-]
-```
-
----
-
-# 16. Follow-up APIs
-
-Follow-ups are used to schedule and track future customer interactions.
-
----
-
-## Create Follow-up
-
-```http
-POST /api/v1/followups/
-```
-
-Example request:
-
-```json
-{
-    "customer_id": 10,
-    "followup_date": "2026-08-01",
-    "type": "Email",
-    "notes": "Send quotation"
-}
-```
-
-New follow-ups are created with:
-
-```text
-status = pending
-```
-
----
-
-## List Follow-ups
-
-```http
-GET /api/v1/followups/
-```
-
-Filter by status:
-
-```text
-GET /api/v1/followups/?status=pending
-```
-
-Filter by customer:
-
-```text
-GET /api/v1/followups/?customer_id=10
-```
-
-Today's follow-ups:
-
-```text
-GET /api/v1/followups/?date=today
-```
-
-Upcoming follow-ups:
-
-```text
-GET /api/v1/followups/?date=upcoming
-```
-
-Overdue follow-ups:
-
-```text
-GET /api/v1/followups/?date=overdue
-```
-
-Pagination:
-
-```text
-GET /api/v1/followups/?page=1&limit=20
-```
-
----
-
-## Update Follow-up Status
-
-```http
-PATCH /api/v1/followups/{followup_id}/status
-```
-
-Example request:
-
-```json
-{
-    "status": "completed"
-}
-```
-
-Supported statuses:
-
-* pending
-* completed
-* cancelled
-
----
-
-# 17. Role-Based Access Control
-
-The application uses permission-based authorization.
-
-The main roles are:
-
-| Role            | Description                         |
-| --------------- | ----------------------------------- |
-| Admin           | Full system access                  |
-| Manager         | Management and lead workflow access |
-| Sales Executive | Sales and customer workflow access  |
-| Viewer          | Read-only access                    |
-
-Examples of permissions include:
-
-```text
-create_lead
-delete_lead
-view_customers
-assign_lead
-manage_users
-create_customer_activity
-create_followup
-update_followup
-view_audit_logs
-```
-
-Protected endpoints verify the authenticated user's permissions before allowing access.
-
----
-
-# 18. Permission APIs
-
-Permission-related endpoints are available for managing and verifying role-based permissions.
-
-Permissions are associated with roles through the role-permission mapping.
-
-The system ensures that users without the required permission receive an authorization error.
-
-Example:
-
-```text
-403 Forbidden
-```
-
-when a user attempts to access a restricted endpoint.
-
----
-
-# 19. Notification APIs
-
-Notifications are user-specific.
-
-A user can only access their own notifications.
-
----
-
-## Get Notifications
-
-```http
-GET /api/v1/notifications/
-```
-
-Filter unread notifications:
-
-```text
-GET /api/v1/notifications/?is_read=false
-```
-
-Filter read notifications:
-
-```text
-GET /api/v1/notifications/?is_read=true
-```
-
-Pagination:
-
-```text
-GET /api/v1/notifications/?page=1&limit=20
-```
-
----
-
-## Mark Notification as Read/Unread
-
-```http
-PATCH /api/v1/notifications/{notification_id}/read
-```
-
-Example:
-
-```json
-{
-    "is_read": true
-}
-```
-
----
-
-# 20. Audit Log APIs
-
-Audit logs provide a history of important CRM actions.
-
----
-
-## List Audit Logs
-
-```http
-GET /api/v1/audit-logs/
-```
-
-Filter by user:
-
-```text
-GET /api/v1/audit-logs/?user_id=5
-```
-
-Filter by action:
-
-```text
-GET /api/v1/audit-logs/?action=CREATE
-```
-
-Filter by module:
-
-```text
-GET /api/v1/audit-logs/?module=leads
-```
-
-Date range:
-
-```text
-GET /api/v1/audit-logs/?from_date=2026-07-01&to_date=2026-07-31
-```
-
-Pagination:
-
-```text
-GET /api/v1/audit-logs/?page=1&limit=20
-```
-
-Sorting:
-
-```text
-GET /api/v1/audit-logs/?sort_by=created_at&sort_order=desc
-```
-
-Audit log access is protected by the appropriate permission.
-
----
-
-# 21. Standard API Response Format
-
-The application uses a common response format for successful API responses.
-
-Example:
-
-```json
-{
-    "code": 200,
-    "status": "Success",
-    "message": "Request successful",
-    "data": {}
-}
-```
-
-Successful creation example:
-
-```json
-{
-    "code": 201,
-    "status": "Success",
-    "message": "Lead created successfully",
-    "data": {}
-}
-```
-
-Error response example:
-
-```json
-{
-    "code": 400,
-    "status": "Error",
-    "message": "Request failed",
-    "data": null
-}
-```
-
-The standard response utility is implemented in:
-
-```text
-app/core/responses.py
-```
-
----
-
-# 22. Error Handling
-
-The application includes centralized exception handling.
-
-The following errors are handled consistently:
-
-* HTTP errors
-* Validation errors
-* Authentication errors
-* Authorization errors
-* Not Found errors
-* Bad Request errors
-* Internal Server Errors
-
-FastAPI validation errors return appropriate `422` responses.
-
-Unauthorized users receive appropriate authentication or permission errors.
-
-Unexpected server errors are handled through the global exception handler.
 
 ---
 
 # 23. API Testing
 
-The project includes automated API testing using:
+The project includes a structured Postman Collection covering the application's API modules.
 
-* Pytest
-* SQLite test database
+Testing was performed for:
 
-The test database is separated from the production PostgreSQL/Neon database.
+* Authentication
+* Customer APIs
+* Lead APIs
+* RBAC
+* Permission checks
+* Customer Activities
+* Follow-ups
+* Notifications
+* Audit Logs
+* Validation
+* Error handling
+* Pagination
+* Filtering
+* Sorting
+* Search
+* Soft delete behavior
+* Email notification workflow
 
-The testing configuration is defined using:
+The APIs were verified manually through Postman during the final project verification phase.
+
+---
+
+# 24. Pytest API Testing — Bonus Task 3
+
+Pytest API automation was started as part of Bonus Task 3.
+
+The test environment was configured with:
 
 ```text
 pytest.ini
+conftest.py
+SQLite test database
 ```
 
-Example:
-
-```ini
-[pytest]
-testpaths = tests
-python_files = test_*.py
-python_functions = test_*
-```
-
-The test setup is configured in:
-
-```text
-tests/conftest.py
-```
-
----
-
-## Automated Test Modules
-
-The automated testing setup covers:
-
-### Authentication Tests
-
-* User Registration
-* User Login
-* Invalid Login
-
-### Customer API Tests
-
-* Create Customer
-* List Customers
-* Get Customer
-* Update Customer
-* Delete Customer
-
-### Lead API Tests
-
-* Create Lead
-* List Leads
-* Get Lead
-* Update Lead
-* Assign Lead
-* Delete Lead
-
-### Permission API Tests
-
-* Authorized Access
-* Unauthorized Access
-
-Run the test suite:
-
-```bash
-pytest
-```
-
-Run with verbose output:
-
-```bash
-pytest -v
-```
-
----
-
-# 24. Postman Collection
-
-The project includes a Postman Collection for manual API verification.
-
-The Postman collection can be used to test:
+The intended automated test coverage includes:
 
 * Authentication
 * Customer APIs
 * Lead APIs
 * Permission APIs
-* Customer Activity APIs
-* Follow-up APIs
-* Notification APIs
-* Audit Log APIs
 
-The Postman Collection should be included with the final project deliverables.
+The Pytest implementation was partially completed and is currently deferred.
 
----
+Manual API verification through the structured Postman Collection was completed for the implemented CRM modules.
 
-# 25. Swagger API Documentation
-
-FastAPI automatically generates Swagger/OpenAPI documentation.
-
-After starting the application, open:
+Therefore:
 
 ```text
-http://127.0.0.1:8000/docs
+Bonus Task 3 – Pytest API Testing
+Status: Partially completed / Deferred
 ```
 
-The Swagger interface allows API consumers and evaluators to:
-
-* Explore all available APIs
-* View request parameters
-* View request bodies
-* View response structures
-* Authorize using JWT
-* Execute API requests
-* Verify API responses
-
-The Swagger `/docs` URL is part of the project documentation deliverables.
+The existing Pytest setup can be extended in the future to achieve complete automated test coverage.
 
 ---
 
-# 26. Background Scheduler
+# 25. Postman Verification Strategy
 
-The application includes background scheduler functionality.
-
-The scheduler is started when the FastAPI application starts and stopped when the application shuts down.
-
-The scheduler implementation is located at:
+The final verification process followed this sequence:
 
 ```text
-app/background/scheduler.py
+Authentication
+      ↓
+Registration
+      ↓
+Login
+      ↓
+JWT Verification
+      ↓
+Customers + RBAC
+      ↓
+Leads + RBAC
+      ↓
+Lead Assignment
+      ↓
+Notifications
+      ↓
+Audit Logs
+      ↓
+Customer Activities
+      ↓
+Customer Timeline
+      ↓
+Follow-ups
+      ↓
+Follow-up Status
+      ↓
+Background Processing
+      ↓
+Email Notifications
 ```
 
-The architecture can support automated CRM workflows such as:
-
-* Daily follow-up reminders
-* Automated notification processing
-* Scheduled CRM reports
-* Other periodic background operations
+The APIs were verified both individually and through cross-module workflows.
 
 ---
 
-# 27. Health Check
+# 26. End-to-End CRM Workflow
 
-The application provides a health check endpoint:
-
-```http
-GET /health
-```
-
-Example response:
-
-```json
-{
-    "code": 200,
-    "status": "Success",
-    "message": "Health check successful",
-    "data": {
-        "status": "healthy"
-    }
-}
-```
-
----
-
-# 28. Root Endpoint
-
-The application provides a root endpoint:
-
-```http
-GET /
-```
-
-Example response:
-
-```json
-{
-    "code": 200,
-    "status": "Success",
-    "message": "CRM Task 3 API is running",
-    "data": null
-}
-```
-
----
-
-# 29. Running the Complete Project
-
-### Step 1
-
-Activate the virtual environment:
-
-```powershell
-.\SMS_venv\Scripts\Activate.ps1
-```
-
-### Step 2
-
-Verify the `.env` configuration.
-
-### Step 3
-
-Run database migrations:
-
-```bash
-alembic upgrade head
-```
-
-### Step 4
-
-Start the FastAPI application:
-
-```bash
-uvicorn app.main:app --reload
-```
-
-### Step 5
-
-Open Swagger:
+## Lead Workflow
 
 ```text
-http://127.0.0.1:8000/docs
+User Login
+    ↓
+Create Lead
+    ↓
+Assign Lead
+    ↓
+Notification Generated
+    ↓
+Assigned User Receives Notification
+    ↓
+Update Lead
+    ↓
+Audit Log Created
+    ↓
+Delete Lead
+    ↓
+Soft Delete
+    ↓
+Audit Log Created
 ```
 
-### Step 6
-
-Authenticate using the login API.
-
-### Step 7
-
-Authorize Swagger using the JWT token.
-
-### Step 8
-
-Test the APIs module by module.
-
----
-
-# 30. Recommended API Verification Flow
-
-For manual API verification, follow this sequence:
+## Customer Engagement Workflow
 
 ```text
-1. Register User
-        ↓
-2. Login
-        ↓
-3. Get JWT Token
-        ↓
-4. Authorize Protected APIs
-        ↓
-5. Verify Customer APIs
-        ↓
-6. Verify Lead APIs
-        ↓
-7. Verify Lead Assignment
-        ↓
-8. Verify Notifications
-        ↓
-9. Verify Customer Activities
-        ↓
-10. Verify Customer Timeline
-        ↓
-11. Verify Follow-ups
-        ↓
-12. Verify Audit Logs
-        ↓
-13. Verify RBAC Permissions
+Customer Created
+    ↓
+Create Activity
+    ↓
+Activity Added to Timeline
+    ↓
+Create Follow-up
+    ↓
+Follow-up Becomes Due
+    ↓
+Background Scheduler Detects Follow-up
+    ↓
+Email Reminder Sent
+    ↓
+reminder_sent_at Updated
 ```
 
 ---
 
-# 31. Git Workflow
+# 27. Security Verification
 
-The project uses Git for version control.
+The following security scenarios were verified:
 
-Basic workflow:
+```text
+Valid JWT
+    → Protected API Access
 
-```bash
-git status
+No JWT
+    → 401 Unauthorized
+
+Invalid JWT
+    → 401 Unauthorized
+
+Valid JWT + Missing Permission
+    → 403 Forbidden
+
+Valid JWT + Required Permission
+    → Access Granted
 ```
 
-Add changes:
-
-```bash
-git add .
-```
-
-Commit changes:
-
-```bash
-git commit -m "Update CRM Task 3 APIs"
-```
-
-Push changes:
-
-```bash
-git push origin main
-```
-
-Before pushing final changes, verify:
-
-* Application starts successfully
-* Database connection works
-* Alembic migrations are up to date
-* Swagger documentation loads
-* Postman APIs work
-* Automated tests are verified
-* No `.env` or secrets are committed
+RBAC was verified alongside Customer and Lead API testing.
 
 ---
 
-# 32. Final Deliverables
+# 28. Deliverables
 
-The final submission should include:
+The final project deliverables include:
 
 ### 1. Source Code
 
 GitHub repository containing the complete FastAPI project.
 
-### 2. Database Documentation
+### 2. Database
 
 * ER Diagram
 * Database Schema
+* Database relationship documentation
 
 ### 3. API Documentation
 
-Swagger/OpenAPI documentation available through:
+Swagger/OpenAPI:
 
 ```text
 /docs
 ```
 
-### 4. API Testing
+### 4. Testing
 
-Postman Collection containing the API requests used for testing.
+* Postman Collection
+* Manual API verification
+* RBAC verification
+* Permission verification
 
-### 5. README Documentation
+### 5. Documentation
 
-This README should include:
+This `README.md` contains:
 
 * Installation Steps
 * Environment Setup
 * Database Setup
 * API Usage
+* Project Architecture
+* Database Overview
+* Testing Strategy
+* Feature Documentation
 
 ---
 
-# 33. Project Completion Checklist
+# 29. Project Verification Status
 
-## Authentication
-
-* [x] User Registration
-* [x] JWT Login
-* [x] Protected APIs
-* [x] Authentication testing
-
-## Customer Management
-
-* [x] Customer CRUD
-* [x] Search
-* [x] Pagination
-* [x] Filtering
-* [x] Sorting
-* [x] Soft Delete
-
-## Lead Management
-
-* [x] Create Lead
-* [x] List Leads
-* [x] Get Lead
-* [x] Update Lead
-* [x] Assign Lead
-* [x] Soft Delete
-* [x] Search
-* [x] Filtering
-* [x] Pagination
-* [x] Sorting
-* [x] Date Range Filtering
-
-## Customer Activity
-
-* [x] Create Activity
-* [x] Customer Timeline
-
-## Follow-ups
-
-* [x] Create Follow-up
-* [x] List Follow-ups
-* [x] Status Filtering
-* [x] Customer Filtering
-* [x] Today's Follow-ups
-* [x] Upcoming Follow-ups
-* [x] Overdue Follow-ups
-* [x] Update Follow-up Status
-
-## RBAC
-
-* [x] Roles
-* [x] Permissions
-* [x] Role-Permission Mapping
-* [x] Permission-Based Authorization
-
-## Notifications
-
-* [x] Create Notifications
-* [x] Get User Notifications
-* [x] Read/Unread Filtering
-* [x] Mark Notification Read/Unread
-
-## Audit Logging
-
-* [x] Audit Log Model
-* [x] Audit Log Creation
-* [x] Audit Log Listing
-* [x] Filtering
-* [x] Pagination
-* [x] Sorting
-
-## Background Processing
-
-* [x] Background Scheduler Integration
-
-## API Testing
-
-* [x] Pytest Setup
-* [x] SQLite Test Database
-* [x] Authentication Tests
-* [x] Customer API Tests
-* [x] Lead API Tests
-* [x] Permission API Tests
-* [x] Postman Collection
-
-## Documentation
-
-* [x] Swagger/OpenAPI
-* [x] README
-* [ ] ER Diagram
-* [ ] Database Schema Documentation
-* [ ] Final Postman Collection Export
-* [ ] Final GitHub Push
+| Module                        | Status                         |
+| ----------------------------- | ------------------------------ |
+| User Registration             | Completed                      |
+| JWT Login                     | Completed                      |
+| Authentication Verification   | Completed                      |
+| Roles                         | Completed                      |
+| Permissions                   | Completed                      |
+| RBAC                          | Completed                      |
+| Customer CRUD                 | Completed                      |
+| Customer Search               | Completed                      |
+| Customer Filtering            | Completed                      |
+| Customer Pagination           | Completed                      |
+| Customer Sorting              | Completed                      |
+| Customer Soft Delete          | Completed                      |
+| Lead CRUD                     | Completed                      |
+| Lead Search                   | Completed                      |
+| Lead Filtering                | Completed                      |
+| Lead Sorting                  | Completed                      |
+| Lead Pagination               | Completed                      |
+| Lead Assignment               | Completed                      |
+| Lead Soft Delete              | Completed                      |
+| Customer Activities           | Completed                      |
+| Customer Timeline             | Completed                      |
+| Follow-up Management          | Completed                      |
+| Follow-up Filtering           | Completed                      |
+| Follow-up Status Management   | Completed                      |
+| Notifications                 | Completed                      |
+| Audit Logging                 | Completed                      |
+| Background Processing         | Completed                      |
+| Email Notifications           | Completed                      |
+| Postman API Verification      | Completed                      |
+| ER Diagram                    | Completed                      |
+| Database Schema Documentation | Completed                      |
+| DFD                           | Completed                      |
+| Pytest API Automation         | Partially Completed / Deferred |
 
 ---
 
-# 34. Conclusion
+# 30. Future Improvements
 
-This project implements a modular CRM backend system using FastAPI with authentication, authorization, lead management, customer management, workflow automation, notifications, audit logging, and background processing.
+Potential future improvements include:
 
-The system follows a structured architecture with:
+* Complete Pytest automation for all required modules
+* Increase automated test coverage
+* Add CI/CD pipeline
+* Add Docker support
+* Add Redis/Celery-based distributed background processing
+* Add richer CRM reporting dashboards
+* Add advanced lead workflow automation
+* Add email templates
+* Add email delivery tracking
+* Add notification preferences
+* Add refresh token support
+* Add rate limiting
+* Add production-grade logging and monitoring
 
-* FastAPI routers
-* SQLAlchemy models
-* Pydantic schemas
-* JWT authentication
-* Permission-based RBAC
-* Centralized exception handling
-* Standardized API responses
-* Database migrations
-* Audit logging
-* Automated testing
-* Swagger/OpenAPI documentation
+---
 
-The project is designed to demonstrate practical CRM backend architecture, database relationships, REST API development, authentication and authorization, sales workflow management, and enterprise-level backend development practices.
+# 31. Conclusion
+
+This project extends the CRM foundation from Task 2 into a more complete CRM backend system focused on lead management and sales workflow automation.
+
+The implementation includes:
+
+```text
+FastAPI
++ PostgreSQL / Neon
++ SQLAlchemy
++ JWT Authentication
++ RBAC
++ Permission Management
++ Customer Management
++ Lead Management
++ Lead Assignment
++ Customer Activity Timeline
++ Follow-up Management
++ Notifications
++ Audit Logging
++ Background Processing
++ Email Notifications
++ Postman API Testing
+```
+
+The project has been manually verified through the major CRM workflows and API modules.
+
+The remaining deferred item is the completion of the full automated Pytest API test suite under Bonus Task 3.
+
+---
+
+# 32. Final Status
+
+```text
+CRM Task 3
+        ↓
+Core API Development      ✅
+Authentication             ✅
+Authorization / RBAC       ✅
+Customer Management        ✅
+Lead Management            ✅
+Activity Timeline          ✅
+Follow-up Management       ✅
+Notifications              ✅
+Audit Logging              ✅
+Background Processing      ✅
+Email Notifications        ✅
+Database Documentation     ✅
+ER Diagram                 ✅
+DFD                        ✅
+Postman Verification       ✅
+README Documentation       ✅
+Pytest Automation          ⏸️ Deferred
+```
+
+**Project Status: Core Task 3 implementation and verification completed.**
