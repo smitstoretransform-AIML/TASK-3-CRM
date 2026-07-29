@@ -1,13 +1,13 @@
 {
     "report_date": "2026-07-29",
-    "generated_at": "2026-07-29T12:31:56.510840+00:00",
+    "generated_at": "2026-07-29T13:39:18.524547+00:00",
     "customers": {
-        "total": 15,
-        "new_today": 5
+        "total": 16,
+        "new_today": 6
     },
     "leads": {
-        "total": 10,
-        "new_today": 4
+        "total": 11,
+        "new_today": 5
     },
     "followups": {
         "total": 12,

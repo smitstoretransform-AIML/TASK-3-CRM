@@ -15,6 +15,7 @@ from app.core.responses import (
     APIResponse,
     success_response,
 )
+from app.models.customers import Customer
 from app.models.leads import Lead
 from app.models.notifications import Notification
 from app.models.users import User
@@ -533,6 +534,25 @@ def update_lead(
     )
 
     # ========================================================
+    # PREVENT DIRECT CONVERSION
+    # ========================================================
+
+    if (
+        "status" in update_data
+        and update_data["status"].strip().lower()
+        == "converted"
+        and lead.status.strip().lower()
+        != "converted"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Lead cannot be directly marked as Converted. "
+                "Use the lead conversion endpoint instead."
+            )
+        )
+
+    # ========================================================
     # CHECK DUPLICATE EMAIL
     # ========================================================
 
@@ -697,6 +717,217 @@ def update_lead(
 
 
 # ============================================================
+# CONVERT LEAD TO CUSTOMER
+# ============================================================
+
+@router.post(
+    "/{lead_id}/convert",
+    response_model=APIResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[
+        Depends(require_permission("create_customer"))
+    ]
+)
+def convert_lead_to_customer(
+    lead_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # ========================================================
+    # GET ACTIVE LEAD
+    # ========================================================
+
+    lead = (
+        db.query(Lead)
+        .filter(
+            Lead.id == lead_id,
+            Lead.deleted_at.is_(None)
+        )
+        .first()
+    )
+
+    if not lead:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Lead not found"
+        )
+
+    # ========================================================
+    # CHECK IF LEAD IS ALREADY CONVERTED
+    # ========================================================
+
+    if lead.status.strip().lower() == "converted":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Lead has already been converted"
+        )
+
+    # ========================================================
+    # CHECK EXISTING CUSTOMER LINKED TO LEAD
+    # ========================================================
+
+    existing_customer = (
+        db.query(Customer)
+        .filter(
+            Customer.lead_id == lead.id,
+            Customer.deleted_at.is_(None)
+        )
+        .first()
+    )
+
+    if existing_customer:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "This lead is already linked "
+                "to an existing customer"
+            )
+        )
+
+    # ========================================================
+    # CHECK CUSTOMER WITH SAME EMAIL
+    # ========================================================
+
+    existing_customer_by_email = (
+        db.query(Customer)
+        .filter(
+            Customer.email == lead.email,
+            Customer.deleted_at.is_(None)
+        )
+        .first()
+    )
+
+    if existing_customer_by_email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "A customer with this email already exists. "
+                "This lead cannot be converted automatically."
+            )
+        )
+
+    # ========================================================
+    # CAPTURE OLD LEAD DATA
+    # ========================================================
+
+    old_lead_data = {
+        "status": lead.status,
+        "assigned_to": lead.assigned_to,
+    }
+
+    # ========================================================
+    # CREATE CUSTOMER
+    # ========================================================
+
+    new_customer = Customer(
+        name=lead.name,
+        email=lead.email,
+        phone=lead.phone,
+        company=lead.company,
+        lead_id=lead.id,
+        created_by=current_user.id,
+    )
+
+    db.add(new_customer)
+
+    # ========================================================
+    # UPDATE LEAD STATUS
+    # ========================================================
+
+    lead.status = "Converted"
+
+    # ========================================================
+    # CREATE AUDIT LOG
+    # ========================================================
+
+    create_audit_log(
+        db=db,
+        user_id=current_user.id,
+        action="CONVERT",
+        module="leads",
+        old_data=old_lead_data,
+        new_data={
+            "status": lead.status,
+            "customer_lead_id": lead.id,
+        }
+    )
+
+    # ========================================================
+    # CREATE NOTIFICATION
+    # ========================================================
+
+    if lead.assigned_to is not None:
+
+        notification = Notification(
+            user_id=lead.assigned_to,
+            title="Lead Converted",
+            message=(
+                f"Lead '{lead.name}' has been "
+                f"converted into a customer"
+            ),
+            is_read=False,
+            created_at=datetime.utcnow()
+        )
+
+        db.add(notification)
+
+    # ========================================================
+    # COMMIT TRANSACTION
+    # ========================================================
+
+    try:
+
+        db.commit()
+
+        db.refresh(new_customer)
+        db.refresh(lead)
+
+    except Exception:
+
+        db.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Lead conversion failed. "
+                "No changes were saved."
+            )
+        )
+
+    # ========================================================
+    # BUILD RESPONSE
+    # ========================================================
+
+    lead_response = LeadResponse.model_validate(
+        lead,
+        from_attributes=True
+    )
+
+    customer_data = {
+        "id": new_customer.id,
+        "name": new_customer.name,
+        "email": new_customer.email,
+        "phone": new_customer.phone,
+        "company": new_customer.company,
+        "lead_id": new_customer.lead_id,
+        "created_by": new_customer.created_by,
+        "created_at": new_customer.created_at,
+        "updated_at": new_customer.updated_at,
+    }
+
+    return success_response(
+        data={
+            "lead": lead_response.model_dump(
+                mode="json"
+            ),
+            "customer": customer_data,
+        },
+        message="Lead converted to customer successfully",
+        code=201
+    )
+
+
+# ============================================================
 # ASSIGN LEAD
 # ============================================================
 
@@ -788,7 +1019,7 @@ def assign_lead(
         db.add(notification)
 
     # ========================================================
-    # CREATE AUDIT LOG
+    #  
     # ========================================================
 
     create_audit_log(
@@ -821,6 +1052,187 @@ def assign_lead(
     )
 
 
+
+# ============================================================
+# CONVERT LEAD TO CUSTOMER
+# ============================================================
+
+@router.post(
+    "/{lead_id}/convert",
+    response_model=APIResponse,
+    status_code=status.HTTP_201_CREATED
+)
+def convert_lead_to_customer(
+    lead_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # ========================================================
+    # GET LEAD
+    # ========================================================
+
+    lead = (
+        db.query(Lead)
+        .filter(
+            Lead.id == lead_id,
+            Lead.deleted_at.is_(None)
+        )
+        .first()
+    )
+
+    if not lead:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Lead not found"
+        )
+
+    # ========================================================
+    # CHECK LEAD STATUS
+    # ========================================================
+
+    if lead.status.lower() == "converted":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Lead has already been converted to a customer"
+        )
+
+    # ========================================================
+    # CHECK WHETHER CUSTOMER ALREADY EXISTS
+    # ========================================================
+
+    existing_customer = (
+        db.query(Customer)
+        .filter(
+            Customer.lead_id == lead.id,
+            Customer.deleted_at.is_(None)
+        )
+        .first()
+    )
+
+    if existing_customer:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Customer already exists for this lead"
+        )
+
+    # ========================================================
+    # CHECK DUPLICATE CUSTOMER EMAIL
+    # ========================================================
+
+    existing_customer_by_email = (
+        db.query(Customer)
+        .filter(
+            Customer.email == lead.email,
+            Customer.deleted_at.is_(None)
+        )
+        .first()
+    )
+
+    if existing_customer_by_email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "A customer with this email already exists"
+            )
+        )
+
+    # ========================================================
+    # CREATE CUSTOMER
+    # ========================================================
+
+    new_customer = Customer(
+        name=lead.name,
+        email=lead.email,
+        phone=lead.phone,
+        company=lead.company,
+        lead_id=lead.id,
+        created_by=current_user.id
+    )
+
+    db.add(new_customer)
+
+    # Flush so customer.id is generated before audit/response
+    db.flush()
+
+    # ========================================================
+    # UPDATE LEAD STATUS
+    # ========================================================
+
+    old_status = lead.status
+
+    lead.status = "Converted"
+
+    # ========================================================
+    # CREATE AUDIT LOG
+    # ========================================================
+
+    create_audit_log(
+        db=db,
+        user_id=current_user.id,
+        action="CONVERT",
+        module="leads",
+        old_data={
+            "lead_id": lead.id,
+            "status": old_status
+        },
+        new_data={
+            "lead_id": lead.id,
+            "status": "Converted",
+            "customer_id": new_customer.id
+        }
+    )
+
+    # ========================================================
+    # CREATE NOTIFICATION
+    # ========================================================
+
+    if lead.assigned_to is not None:
+
+        notification = Notification(
+            user_id=lead.assigned_to,
+            title="Lead Converted",
+            message=(
+                f"Lead '{lead.name}' has been converted "
+                f"to customer '{new_customer.name}'"
+            ),
+            is_read=False,
+            created_at=datetime.utcnow()
+        )
+
+        db.add(notification)
+
+    # ========================================================
+    # COMMIT TRANSACTION
+    # ========================================================
+
+    db.commit()
+
+    db.refresh(new_customer)
+    db.refresh(lead)
+
+    # ========================================================
+    # RESPONSE
+    # ========================================================
+
+    return success_response(
+        data={
+            "lead": {
+                "id": lead.id,
+                "status": lead.status
+            },
+            "customer": {
+                "id": new_customer.id,
+                "lead_id": new_customer.lead_id,
+                "name": new_customer.name,
+                "email": new_customer.email,
+                "phone": new_customer.phone,
+                "company": new_customer.company
+            }
+        },
+        message="Lead converted to customer successfully",
+        code=status.HTTP_201_CREATED
+    )
+
 # ============================================================
 # DELETE LEAD - SOFT DELETE
 # ============================================================
@@ -851,6 +1263,20 @@ def delete_lead(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Lead not found"
+        )
+
+    # ========================================================
+    # PREVENT DELETING CONVERTED LEAD
+    # ========================================================
+
+    if lead.status.strip().lower() == "converted":
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Converted leads cannot be deleted. "
+                "Manage the associated customer instead."
+            )
         )
 
     # ========================================================
@@ -894,4 +1320,3 @@ def delete_lead(
         message="Lead deleted successfully",
         code=200
     )
-

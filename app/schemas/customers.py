@@ -10,6 +10,10 @@ from pydantic import (
 )
 
 
+# =========================================================
+# CREATE CUSTOMER
+# =========================================================
+
 class CustomerCreate(BaseModel):
     name: str = Field(...)
     email: EmailStr
@@ -18,23 +22,38 @@ class CustomerCreate(BaseModel):
 
     @field_validator("name")
     @classmethod
-    def validate_name(cls, value: str) -> str:
+    def validate_name(
+        cls,
+        value: str
+    ) -> str:
+
         value = value.strip()
 
         if not value:
-            raise ValueError("Name cannot be empty")
+            raise ValueError(
+                "Name cannot be empty"
+            )
 
         return value
 
     @field_validator("phone")
     @classmethod
-    def validate_phone(cls, value: str) -> str:
+    def validate_phone(
+        cls,
+        value: str
+    ) -> str:
+
         value = value.strip()
 
         if not value:
-            raise ValueError("Phone number cannot be empty")
+            raise ValueError(
+                "Phone number cannot be empty"
+            )
 
-        if not re.fullmatch(r"\d{10}", value):
+        if not re.fullmatch(
+            r"\d{10}",
+            value
+        ):
             raise ValueError(
                 "Phone number must contain exactly 10 digits"
             )
@@ -43,7 +62,11 @@ class CustomerCreate(BaseModel):
 
     @field_validator("company")
     @classmethod
-    def validate_company(cls, value: str | None) -> str | None:
+    def validate_company(
+        cls,
+        value: str | None
+    ) -> str | None:
+
         if value is None:
             return None
 
@@ -56,6 +79,10 @@ class CustomerCreate(BaseModel):
 
         return value
 
+
+# =========================================================
+# UPDATE CUSTOMER
+# =========================================================
 
 class CustomerUpdate(BaseModel):
     name: str | None = None
@@ -65,29 +92,44 @@ class CustomerUpdate(BaseModel):
 
     @field_validator("name")
     @classmethod
-    def validate_name(cls, value: str | None) -> str | None:
+    def validate_name(
+        cls,
+        value: str | None
+    ) -> str | None:
+
         if value is None:
             return None
 
         value = value.strip()
 
         if not value:
-            raise ValueError("Name cannot be empty")
+            raise ValueError(
+                "Name cannot be empty"
+            )
 
         return value
 
     @field_validator("phone")
     @classmethod
-    def validate_phone(cls, value: str | None) -> str | None:
+    def validate_phone(
+        cls,
+        value: str | None
+    ) -> str | None:
+
         if value is None:
             return None
 
         value = value.strip()
 
         if not value:
-            raise ValueError("Phone number cannot be empty")
+            raise ValueError(
+                "Phone number cannot be empty"
+            )
 
-        if not re.fullmatch(r"\d{10}", value):
+        if not re.fullmatch(
+            r"\d{10}",
+            value
+        ):
             raise ValueError(
                 "Phone number must contain exactly 10 digits"
             )
@@ -96,7 +138,11 @@ class CustomerUpdate(BaseModel):
 
     @field_validator("company")
     @classmethod
-    def validate_company(cls, value: str | None) -> str | None:
+    def validate_company(
+        cls,
+        value: str | None
+    ) -> str | None:
+
         if value is None:
             return None
 
@@ -110,12 +156,20 @@ class CustomerUpdate(BaseModel):
         return value
 
 
+# =========================================================
+# CUSTOMER RESPONSE
+# =========================================================
+
 class CustomerResponse(BaseModel):
     id: int
     name: str
     email: EmailStr
     phone: str
     company: str | None
+
+    # Lead from which customer was converted
+    lead_id: int | None
+
     created_by: int
     created_at: datetime
     updated_at: datetime
@@ -125,6 +179,10 @@ class CustomerResponse(BaseModel):
         from_attributes=True
     )
 
+
+# =========================================================
+# CUSTOMER LIST RESPONSE
+# =========================================================
 
 class CustomerListResponse(BaseModel):
     items: list[CustomerResponse]

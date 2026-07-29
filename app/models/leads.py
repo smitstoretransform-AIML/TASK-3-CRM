@@ -39,6 +39,16 @@ class Lead(Base):
         nullable=False
     )
 
+    # Lead lifecycle status
+    #
+    # Allowed values:
+    # New
+    # Contacted
+    # Interested
+    # Qualified
+    # Converted
+    # Lost
+    
     status = Column(
         String(50),
         nullable=False,
