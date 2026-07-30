@@ -29,6 +29,7 @@ from app.schemas.leads import (
     LeadResponse,
     LeadUpdate,
 )
+# from tests.conftest import db
 
 
 router = APIRouter(
@@ -1157,6 +1158,21 @@ def convert_lead_to_customer(
 
     # Flush so customer.id is generated before audit/response
     db.flush()
+
+    # =========================================================
+    # CREATE NOTIFICATION
+    # =========================================================
+
+    new_notification = Notification(
+        user_id=current_user.id,
+        title="Lead Converted",
+        message=(
+            f'Lead "{lead.name}" '
+            f'has been converted into a customer.'
+        )
+    )
+
+    db.add(new_notification)
 
     # ========================================================
     # UPDATE LEAD STATUS
