@@ -18,6 +18,7 @@ from app.core.responses import (
 from app.models.customers import Customer
 from app.models.follow_ups import FollowUp
 from app.models.users import User
+from app.models.leads import Lead
 
 from app.schemas.follow_ups import (
     FollowUpCreate,
@@ -30,7 +31,6 @@ router = APIRouter(
     prefix="/api/v1/followups",
     tags=["Follow-ups"]
 )
-
 
 # ============================================================
 # CREATE FOLLOW-UP
@@ -48,37 +48,72 @@ def create_follow_up(
         require_permission("create_followup")
     )
 ):
-    # Check customer exists and is not soft deleted
-    customer = (
-        db.query(Customer)
-        .filter(
-            Customer.id == follow_up_data.customer_id,
-            Customer.deleted_at.is_(None)
-        )
-        .first()
-    )
 
-    if not customer:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Customer not found"
+    # ========================================================
+    # VALIDATE LEAD
+    # ========================================================
+
+    if follow_up_data.lead_id is not None:
+
+        lead = (
+            db.query(Lead)
+            .filter(
+                Lead.id == follow_up_data.lead_id,
+                Lead.deleted_at.is_(None)
+            )
+            .first()
         )
 
-    # Create follow-up
+        if not lead:
+
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Lead not found"
+            )
+
+    # ========================================================
+    # VALIDATE CUSTOMER
+    # ========================================================
+
+    if follow_up_data.customer_id is not None:
+
+        customer = (
+            db.query(Customer)
+            .filter(
+                Customer.id == follow_up_data.customer_id,
+                Customer.deleted_at.is_(None)
+            )
+            .first()
+        )
+
+        if not customer:
+
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Customer not found"
+            )
+
+    # ========================================================
+    # CREATE FOLLOW-UP
+    # ========================================================
+
     new_follow_up = FollowUp(
+        lead_id=follow_up_data.lead_id,
         customer_id=follow_up_data.customer_id,
         date=follow_up_data.followup_date,
         type=follow_up_data.type,
         status="pending",
-        notes=follow_up_data.notes,
+        notes=follow_up_data.notes
     )
 
     db.add(new_follow_up)
 
-    # Generate ID before creating audit log
     db.flush()
 
-    # Create audit log
+    # ========================================================
+    # CREATE AUDIT LOG
+    # ========================================================
+
     create_audit_log(
         db=db,
         user_id=current_user.id,
@@ -87,6 +122,7 @@ def create_follow_up(
         old_data=None,
         new_data={
             "id": new_follow_up.id,
+            "lead_id": new_follow_up.lead_id,
             "customer_id": new_follow_up.customer_id,
             "date": str(new_follow_up.date),
             "type": new_follow_up.type,
@@ -96,16 +132,18 @@ def create_follow_up(
     )
 
     db.commit()
+
     db.refresh(new_follow_up)
 
     return success_response(
         data=FollowUpResponse.model_validate(
             new_follow_up
-        ).model_dump(mode="json"),
+        ).model_dump(
+            mode="json"
+        ),
         message="Follow-up created successfully",
         code=201
     )
-
 
 # ============================================================
 # LIST FOLLOW-UPS
@@ -130,11 +168,18 @@ def list_follow_ups(
             "Filter by date: today, upcoming, overdue"
         )
     ),
+    lead_id: int | None = Query(
+        default=None,
+        gt=0,
+        description="Filter follow-ups by lead ID"
+    ),
+
     customer_id: int | None = Query(
         default=None,
         gt=0,
         description="Filter follow-ups by customer ID"
     ),
+
     page: int = Query(
         default=1,
         ge=1,
@@ -187,6 +232,16 @@ def list_follow_ups(
         query = query.filter(
             FollowUp.customer_id == customer_id
         )
+
+    # ========================================================
+    # LEAD FILTER
+    # ========================================================
+
+        if lead_id is not None:
+
+            query = query.filter(
+                FollowUp.lead_id == lead_id
+            )
 
     # ========================================================
     # DATE CATEGORY FILTER
@@ -380,3 +435,114 @@ def update_follow_up_status(
         code=200
     )
 
+
+# ============================================================
+# GET LEAD FOLLOW-UPS
+# ============================================================
+
+@router.get(
+    "/leads/{lead_id}",
+    response_model=APIResponse
+)
+def get_lead_follow_ups(
+    lead_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_permission("view_customers")
+    )
+):
+    lead = (
+        db.query(Lead)
+        .filter(
+            Lead.id == lead_id,
+            Lead.deleted_at.is_(None)
+        )
+        .first()
+    )
+
+    if not lead:
+
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Lead not found"
+        )
+
+    follow_ups = (
+        db.query(FollowUp)
+        .filter(
+            FollowUp.lead_id == lead_id
+        )
+        .order_by(
+            FollowUp.date.asc()
+        )
+        .all()
+    )
+
+    return success_response(
+        data=[
+            FollowUpResponse.model_validate(
+                follow_up
+            ).model_dump(
+                mode="json"
+            )
+            for follow_up in follow_ups
+        ],
+        message="Lead follow-ups retrieved successfully",
+        code=200
+    )
+
+
+# ============================================================
+# GET CUSTOMER FOLLOW-UPS
+# ============================================================
+
+@router.get(
+    "/customers/{customer_id}",
+    response_model=APIResponse
+)
+def get_customer_follow_ups(
+    customer_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_permission("view_customers")
+    )
+):
+    customer = (
+        db.query(Customer)
+        .filter(
+            Customer.id == customer_id,
+            Customer.deleted_at.is_(None)
+        )
+        .first()
+    )
+
+    if not customer:
+
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Customer not found"
+        )
+
+    follow_ups = (
+        db.query(FollowUp)
+        .filter(
+            FollowUp.customer_id == customer_id
+        )
+        .order_by(
+            FollowUp.date.asc()
+        )
+        .all()
+    )
+
+    return success_response(
+        data=[
+            FollowUpResponse.model_validate(
+                follow_up
+            ).model_dump(
+                mode="json"
+            )
+            for follow_up in follow_ups
+        ],
+        message="Customer follow-ups retrieved successfully",
+        code=200
+    )
