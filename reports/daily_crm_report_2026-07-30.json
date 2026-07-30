@@ -1,21 +1,21 @@
 {
-    "report_date": "2026-07-29",
-    "generated_at": "2026-07-29T14:05:53.480783+00:00",
+    "report_date": "2026-07-30",
+    "generated_at": "2026-07-30T07:35:51.874791+00:00",
     "customers": {
         "total": 16,
-        "new_today": 6
+        "new_today": 0
     },
     "leads": {
         "total": 11,
-        "new_today": 5
+        "new_today": 0
     },
     "followups": {
         "total": 12,
         "pending": 10,
         "completed": 1,
-        "overdue": 5
+        "overdue": 8
     },
     "notifications": {
-        "created_today": 5
+        "created_today": 1
     }
 }

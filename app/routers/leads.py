@@ -19,6 +19,10 @@ from app.models.customers import Customer
 from app.models.leads import Lead
 from app.models.notifications import Notification
 from app.models.users import User
+
+from app.models.customer_activities import CustomerActivity
+from app.schemas.customer_activities import CustomerTimelineResponse
+
 from app.schemas.leads import (
     LeadCreate,
     LeadListResponse,
@@ -1293,6 +1297,90 @@ def delete_lead(
         "assigned_to": lead.assigned_to,
         "created_by": lead.created_by,
     }
+
+
+
+    # ============================================================
+# GET LEAD TIMELINE
+# ============================================================
+
+@router.get(
+    "/{lead_id}/timeline",
+    response_model=APIResponse
+)
+def get_lead_timeline(
+    lead_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # ========================================================
+    # CHECK IF LEAD EXISTS
+    # ========================================================
+
+    lead = (
+        db.query(Lead)
+        .filter(
+            Lead.id == lead_id,
+            Lead.deleted_at.is_(None)
+        )
+        .first()
+    )
+
+    if not lead:
+
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Lead not found"
+        )
+
+    # ========================================================
+    # GET LEAD ACTIVITIES
+    # ========================================================
+
+    activities = (
+        db.query(CustomerActivity)
+        .filter(
+            CustomerActivity.lead_id == lead_id
+        )
+        .order_by(
+            CustomerActivity.created_at.asc()
+        )
+        .all()
+    )
+
+    # ========================================================
+    # BUILD RESPONSE
+    # ========================================================
+
+    timeline = [
+
+        CustomerTimelineResponse(
+            id=activity.id,
+            lead_id=activity.lead_id,
+            customer_id=activity.customer_id,
+            type=activity.type,
+            description=activity.description,
+            created_by=activity.created_by,
+            date=activity.created_at
+        )
+
+        for activity in activities
+    ]
+
+    # ========================================================
+    # RETURN RESPONSE
+    # ========================================================
+
+    return success_response(
+        data=[
+            item.model_dump(
+                mode="json"
+            )
+            for item in timeline
+        ],
+        message="Lead timeline retrieved successfully",
+        code=200
+    )
 
     # ========================================================
     # SOFT DELETE
