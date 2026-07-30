@@ -106,11 +106,19 @@ Lead Management
     ↓
 Lead Assignment
     ↓
+Lead Activities
+    ↓
+Lead Follow-ups
+    ↓
+Lead Qualification
+    ↓
+Lead Conversion
+    ↓
 Customer Activities
     ↓
 Customer Timeline
     ↓
-Follow-up Management
+Customer Follow-ups
     ↓
 Notifications
     ↓
@@ -351,18 +359,20 @@ Supported activity types:
 
 ## Create Activity
 
-Activities can be created against an existing customer.
+Activities can be created against both Leads and Customers.
 
 Example workflow:
 
 ```text
-Customer
+Lead Created
     ↓
-Create Activity
+Sales Team Contacts Lead
     ↓
-Activity Stored
+Call Logged
     ↓
-Activity Appears in Timeline
+Email Logged
+    ↓
+Meeting Logged
 ```
 
 ## Customer Timeline
